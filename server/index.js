@@ -9,7 +9,7 @@ const { store, save } = require('./db');
 const app = express();
 const server = http.createServer(app);
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
 const CORS_ORIGINS = isProd ? true : ['http://localhost:5173', 'http://localhost:4173'];
 
 const io = new Server(server, {
@@ -293,6 +293,6 @@ if (isProd) {
 // ============ START ============
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✍️  Collab Write server → http://localhost:${PORT}\n`);
 });
