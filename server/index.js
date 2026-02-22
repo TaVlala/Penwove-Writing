@@ -2,13 +2,15 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { store, save } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
 
-const CORS_ORIGINS = ['http://localhost:5173', 'http://localhost:4173'];
+const isProd = process.env.NODE_ENV === 'production';
+const CORS_ORIGINS = isProd ? true : ['http://localhost:5173', 'http://localhost:4173'];
 
 const io = new Server(server, {
   cors: { origin: CORS_ORIGINS, methods: ['GET', 'POST', 'PATCH', 'DELETE'] }
@@ -277,6 +279,16 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('user_typing', { userName });
   });
 });
+
+// ============ STATIC (production) ============
+
+if (isProd) {
+  const clientDist = path.join(__dirname, '../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // ============ START ============
 
