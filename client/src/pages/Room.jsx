@@ -10,6 +10,9 @@ import ContributorsPanel from '../components/ContributorsPanel';
 import NotificationBell from '../components/NotificationBell';
 import RichEditor from '../components/RichEditor';
 import { USER_COLORS } from '../utils';
+import { jsPDF } from 'jspdf';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 
 function Room() {
   const { id: roomId } = useParams();
@@ -28,6 +31,8 @@ function Room() {
   const editorRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef(null);
   const [nameInput, setNameInput] = useState('');
   const [joinColor, setJoinColor] = useState(USER_COLORS[5]);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -224,7 +229,7 @@ function Room() {
     fetch(`/api/notifications?user_id=${user.id}`)
       .then(r => r.json())
       .then(setNotifications)
-      .catch(() => {});
+      .catch(() => { });
   }, [user]);
 
   // Auto-scroll contributions in collab view
@@ -233,6 +238,17 @@ function Room() {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [contributions, view]);
+
+  // Close export menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -402,23 +418,110 @@ function Room() {
     setMembers(await res.json());
   };
 
-  const handleExport = () => {
+  const handleExportTxt = () => {
     const title = room?.title || 'Untitled Story';
-    const lines = [
-      title,
-      '='.repeat(title.length),
-      '',
-      ...contributions.map(c =>
-        `[${c.author_name} — ${new Date(c.created_at).toLocaleString()}]\n${c.content}`
-      ).join('\n\n---\n\n').split('\n')
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const content = contributions.map(c =>
+      `[${c.author_name} — ${new Date(c.created_at).toLocaleString()}]\n${c.content}`
+    ).join('\n\n---\n\n');
+    const fullText = `${title}\n${'='.repeat(title.length)}\n\n${content}`;
+
+    const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const handleExportPdf = () => {
+    const title = room?.title || 'Untitled Story';
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(22);
+    doc.text(title, 20, 20);
+
+    // Content
+    doc.setFontSize(12);
+    let y = 40;
+
+    contributions.forEach(c => {
+      const meta = `${c.author_name} — ${new Date(c.created_at).toLocaleString()}`;
+      doc.setFont('helvetica', 'bold');
+      doc.text(meta, 20, y);
+      y += 7;
+
+      doc.setFont('helvetica', 'normal');
+      const splitContent = doc.splitTextToSize(c.content, 170);
+      doc.text(splitContent, 20, y);
+      y += (splitContent.length * 7) + 10;
+
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
+    const fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+    doc.save(fileName);
+    setShowExportMenu(false);
+  };
+
+  const handleExportDocx = () => {
+    const title = room?.title || 'Untitled Story';
+
+    const children = [
+      new Paragraph({
+        text: title,
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+      }),
+      new Paragraph({ text: '' }),
+    ];
+
+    contributions.forEach(c => {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `${c.author_name} — ${new Date(c.created_at).toLocaleString()}`,
+              bold: true,
+            }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: c.content,
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: '----------------------------------',
+              color: '999999',
+            }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+      );
+    });
+
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: children,
+      }],
+    });
+
+    Packer.toBlob(doc).then(blob => {
+      saveAs(blob, `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.docx`);
+    });
+    setShowExportMenu(false);
   };
 
   const handleCopyLink = () => {
@@ -547,44 +650,86 @@ function Room() {
       {/* ── Header ── */}
       <header className="room-header">
         <div className="room-header-left">
-          <button className="btn-icon" onClick={() => navigate('/')} title="Home">
+          <button className="theme-toggle" style={{ position: 'static', marginRight: 12 }} onClick={() => navigate('/')} title="Home">
             ←
           </button>
           <div className="room-title-wrap">
+            <img src="/assets/logo.svg" alt="Logo" className="room-logo-img" />
             <h1 className="room-title">{room?.title || 'Untitled Room'}</h1>
             {!!room?.is_entry_locked && <span className="badge badge-locked">🚪 Closed</span>}
             {!!room?.is_locked && <span className="badge badge-locked">✏️ Locked</span>}
           </div>
         </div>
 
-        <div className="room-header-right">
+        <div className="room-header-center">
           <div className="view-toggle">
             <button
               className={`toggle-btn ${view === 'collab' ? 'active' : ''}`}
               onClick={() => setView('collab')}
+              title="Collaboration Feed"
             >
-              Collab
+              <span className="btn-long">Collab</span>
+              <span className="btn-short">C</span>
             </button>
             <button
               className={`toggle-btn ${view === 'review' ? 'active' : ''}`}
               onClick={() => setView('review')}
+              title="Review & Approve"
             >
-              Review
+              <span className="btn-long">Review</span>
+              <span className="btn-short">R</span>
             </button>
             <button
               className={`toggle-btn ${view === 'document' ? 'active' : ''}`}
               onClick={() => setView('document')}
+              title="Final Document"
             >
-              Document
+              <span className="btn-long">Document</span>
+              <span className="btn-short">D</span>
             </button>
           </div>
+        </div>
 
-          <button className="btn btn-secondary" onClick={handleCopyLink}>
-            {linkCopied ? '✓ Copied!' : '🔗 Share'}
-          </button>
-          <button className="btn btn-secondary" onClick={handleExport} title="Download as .txt">
-            ↓ Export
-          </button>
+        <div className="room-header-right">
+          <div className="btn-group">
+            <button className="btn btn-secondary btn-icon-only" onClick={handleCopyLink} title="Copy Share Link">
+              🔗
+            </button>
+            <div className="export-menu-wrap" ref={exportMenuRef}>
+              <button
+                className={`btn btn-secondary btn-icon-only ${showExportMenu ? 'active' : ''}`}
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                title="Export Document"
+              >
+                ↓
+              </button>
+              {showExportMenu && (
+                <div className="export-dropdown">
+                  <button onClick={handleExportTxt} className="export-item">
+                    <span className="export-icon">📄</span>
+                    <div className="export-info">
+                      <span className="export-label">Plain Text</span>
+                      <span className="export-ext">.txt</span>
+                    </div>
+                  </button>
+                  <button onClick={handleExportPdf} className="export-item">
+                    <span className="export-icon">📕</span>
+                    <div className="export-info">
+                      <span className="export-label">PDF Document</span>
+                      <span className="export-ext">.pdf</span>
+                    </div>
+                  </button>
+                  <button onClick={handleExportDocx} className="export-item">
+                    <span className="export-icon">📘</span>
+                    <div className="export-info">
+                      <span className="export-label">Word Document</span>
+                      <span className="export-ext">.docx</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
           {/* Online presence avatars */}
           {onlineUsers.length > 0 && (
             <div className="presence-avatars">
@@ -606,32 +751,34 @@ function Room() {
             </div>
           )}
 
-          {/* Contributors button — visible to everyone */}
-          <button
-            className="btn btn-secondary contributors-btn"
-            onClick={() => setShowContributors(true)}
-            title="View contributors"
-          >
-            👥 {members.filter(m => !m.removed_at).length}
-          </button>
+          {/* Contributors & Viewers Group */}
+          <div className="btn-group">
+            <button
+              className="btn btn-secondary contributors-btn"
+              onClick={() => setShowContributors(true)}
+              title="View contributors"
+            >
+              👥 {members.filter(m => !m.removed_at).length}
+            </button>
+          </div>
 
           {isCreator && (
-            <>
+            <div className="view-toggle">
               <button
-                className={`btn lock-btn ${room?.is_entry_locked ? 'lock-btn--active' : ''}`}
+                className={`toggle-btn ${room?.is_entry_locked ? 'active' : ''}`}
                 onClick={handleEntryLockToggle}
-                title={room?.is_entry_locked ? 'Entry locked — click to open' : 'Entry open — click to lock'}
+                title={room?.is_entry_locked ? 'Room closed — click to open' : 'Room open — click to lock'}
               >
-                {room?.is_entry_locked ? '🚪 Closed' : '🚪 Open'}
+                {room?.is_entry_locked ? '🔒 Closed' : '🔓 Room'}
               </button>
               <button
-                className={`btn lock-btn ${room?.is_locked ? 'lock-btn--active' : ''}`}
+                className={`toggle-btn ${room?.is_locked ? 'active' : ''}`}
                 onClick={handleContribLockToggle}
                 title={room?.is_locked ? 'Posts locked — click to unlock' : 'Posts open — click to lock'}
               >
-                {room?.is_locked ? '✏️ Locked' : '✏️ Posts'}
+                {room?.is_locked ? '🔒 Locked' : '🔓 Posts'}
               </button>
-            </>
+            </div>
           )}
           <button className="btn-icon" onClick={toggleTheme} title="Toggle theme">
             {theme === 'light' ? '🌙' : '☀️'}

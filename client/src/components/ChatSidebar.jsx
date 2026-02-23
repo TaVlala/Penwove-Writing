@@ -38,14 +38,26 @@ function ChatSidebar({ messages, currentUser, onSend, isOpen, onToggle }) {
   return (
     <aside className={`chat-sidebar${isOpen ? '' : ' chat-sidebar--collapsed'}`}>
       <div className="chat-sidebar-header">
-        {isOpen && <span>💬 Live Chat</span>}
-        <button
-          className="chat-toggle-btn"
-          onClick={onToggle}
-          title={isOpen ? 'Collapse chat' : 'Expand chat'}
-        >
-          {isOpen ? '»' : '«'}
-        </button>
+        {isOpen ? (
+          <>
+            <span className="chat-header-title">Live Chat</span>
+            <button
+              className="chat-toggle-btn"
+              onClick={onToggle}
+              title="Collapse chat"
+            >
+              <span className="icon-wrap">✕</span>
+            </button>
+          </>
+        ) : (
+          <button
+            className="chat-toggle-btn chat-toggle-btn--collapsed"
+            onClick={onToggle}
+            title="Expand chat"
+          >
+            <span className="icon-wrap">💬</span>
+          </button>
+        )}
       </div>
 
       {isOpen && (

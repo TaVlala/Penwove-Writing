@@ -87,25 +87,25 @@ function Home() {
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
         <div className="home-hero">
-          <div className="home-logo">S</div>
+          <img src="/assets/logo.svg" alt="SynergY Logo" className="home-logo-img" />
           <h1 className="home-title">SynergY</h1>
-          <p className="home-subtitle">Create a room, share the link, write together.</p>
+          <p className="home-subtitle">Draft together. Polish together. Argue over semi-colons together.</p>
           <form className="name-form" onSubmit={handleSetName}>
             <input
               className="input"
               type="text"
-              placeholder="Enter your name to get started"
+              placeholder="What's your name?"
               value={name}
               onChange={e => setName(e.target.value)}
               maxLength={50}
               autoFocus
             />
             <div className="color-picker-row">
-              <span className="color-picker-label">Pick your color</span>
+              <span className="color-picker-label">Choose your vibe</span>
               <ColorPicker selected={selectedColor} onChange={setSelectedColor} />
             </div>
             <button className="btn btn-primary" type="submit" disabled={loading || !name.trim()}>
-              {loading ? 'Setting up…' : 'Continue →'}
+              {loading ? 'Setting up…' : 'Start Writing →'}
             </button>
           </form>
           {error && <p className="error-text">{error}</p>}
@@ -120,13 +120,16 @@ function Home() {
         {theme === 'light' ? '🌙' : '☀️'}
       </button>
       <div className="home-hero">
-        <div className="home-logo">S</div>
+        <img src="/assets/logo.svg" alt="SynergY Logo" className="home-logo-img" />
         <h1 className="home-title">SynergY</h1>
-        <p className="home-subtitle">
-          Hello, <strong style={{ color: user.color }}>{user.name}</strong>
+        <p className="home-subtitle" style={{ opacity: 0.8, fontSize: '0.95em', marginBottom: 24 }}>
+          Great minds think alike. Better minds write together.
+        </p>
+        <p className="home-subtitle" style={{ marginTop: 0, fontWeight: 600 }}>
+          Ready to write, <strong style={{ color: user.color }}>{user.name}</strong>?
         </p>
         <div className="color-picker-row">
-          <span className="color-picker-label">Your color</span>
+          <span className="color-picker-label">Your vibe</span>
           <ColorPicker selected={user.color} onChange={handleColorChange} />
         </div>
 
@@ -143,7 +146,7 @@ function Home() {
                 onChange={e => setTitle(e.target.value)}
                 maxLength={100}
               />
-              <button className="btn btn-primary" type="submit" disabled={loading}>
+              <button className="btn btn-primary" type="submit" disabled={loading} style={{ marginTop: 'auto' }}>
                 {loading ? 'Creating…' : '+ Create New Room'}
               </button>
             </form>
