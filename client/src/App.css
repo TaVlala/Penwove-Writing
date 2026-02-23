@@ -1804,6 +1804,23 @@ body {
 .rich-content strong { font-weight: 700; }
 .rich-content em { font-style: italic; }
 
+/* Re-approval warning */
+.edit-reapproval-warning {
+  font-size: 12px;
+  font-weight: 500;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+[data-theme="dark"] .edit-reapproval-warning {
+  color: #fcd34d;
+  background: #451a03;
+  border-color: #92400e;
+}
+
 /* Edit form RichEditor wrapper */
 .edit-form .rich-editor {
   border: 1.5px solid var(--border);

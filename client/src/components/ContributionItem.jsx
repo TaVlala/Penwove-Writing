@@ -136,6 +136,9 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
       <div className="contribution-body">
         {editing ? (
           <div className="edit-form">
+            {contribution.status === 'approved' && (
+              <p className="edit-reapproval-warning">⚠️ Saving will remove this from the document until re-approved by admin.</p>
+            )}
             <RichEditor
               ref={editRef}
               initialContent={editText}

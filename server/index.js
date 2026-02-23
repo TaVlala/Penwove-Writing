@@ -253,8 +253,14 @@ app.patch('/api/contributions/:id', (req, res) => {
     return res.status(403).json({ error: 'Only the author can edit this' });
   }
 
+  const wasApproved = contribution.status === 'approved';
+
   contribution.content = content.trim();
   contribution.edited_at = now();
+  if (wasApproved) {
+    contribution.status = 'pending';
+    contribution.sort_order = null;
+  }
   save();
 
   io.to(contribution.room_id).emit('contribution_updated', contribution);
