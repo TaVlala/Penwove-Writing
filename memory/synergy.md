@@ -12,7 +12,7 @@
 - **Client**: React 18 + Vite, port 5173
 - **Server**: Node.js + Express + Socket.io, port 3001
 - **DB**: JSON file (`server/data/db.json`) via `server/db.js` (atomic save, EMPTY schema)
-- **Rich editor**: Tiptap (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-align`)
+- **Rich editor**: Tiptap (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-align`, `@tiptap/extension-highlight`, `@tiptap/extension-bubble-menu`)
 - **Deploy**: Railway — build cmd: `cd server && npm install && cd ../client && npm install && npm run build`
 
 ## Architecture
@@ -27,6 +27,8 @@
   - `ReviewView.jsx` — pending/approve/reject/reorder contributions; renders HTML content
   - `ContributionItem.jsx` — single contribution card with reactions, comments, edit/delete, pin button
   - `DocumentView.jsx` — clean read-only document from approved contributions; renders HTML content
+- **client/src/extensions/**
+  - `Comment.js` — custom Tiptap mark for inline comments (stores `commentId`, `userName`)
 - **server/index.js** — all Express routes + Socket.io events + presence map
 - **server/db.js** — JSON file store with atomic `save()`, collections in EMPTY schema
 - **server/data/db.json** — runtime data (NOT committed)
@@ -53,6 +55,16 @@
   sort_order,        // null until approved+reordered
   pinned,            // bool — only one per room can be true
   created_at, updated_at, edited_at
+}
+```
+
+## Comment Schema
+```js
+{
+  id, contribution_id, author_id, author_name, content,
+  parent_id,         // null for root comments
+  inline_id,         // optional — links to a specific highlight/mark in text
+  created_at
 }
 ```
 
@@ -128,6 +140,7 @@
 - **One pin per room**: server unpins all others before setting new pin
 - **Backwards compat**: contributions without `status` treated as `'approved'`; `sort_order` falls back to `created_at`
 - **Entry lock**: allows existing members through even when locked (only blocks brand-new members)
+- **BubbleMenu import**: in `@tiptap/react` 3.20.0, `BubbleMenu` React component must be imported from `@tiptap/react/menus` (the main entry point only exports core logic and EditorContent).
 - **db.json**: NOT committed to git (runtime data)
 
 ## CSS Sections in App.css
@@ -135,3 +148,6 @@
 - `RE-APPROVAL WARNING` — `.edit-reapproval-warning` (amber)
 - `PRESENCE AVATARS` — `.presence-avatars`, `.presence-avatar`, green dot `::after`, `.presence-avatar--self` (purple ring), `.presence-overflow`
 - `PINNED CONTRIBUTIONS` — `.pinned-banner`, `.pinned-banner-label`, `.contribution--pinned`, `.pin-btn`, `.pin-btn--active`
+- `BUBBLE MENU` — `.bubble-menu`, `.bubble-menu-btn` (dark themed floating menu)
+- `INLINE COMMENTS` — `.inline-comment` (dashed underline)
+
