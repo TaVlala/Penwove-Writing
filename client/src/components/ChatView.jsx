@@ -15,7 +15,7 @@ function ChatView({ contributions, currentUser, isCreator, onDelete, onEdit, onR
   const pinned = contributions.find(c => c.pinned);
   const rest = contributions.filter(c => !c.pinned);
 
-  const itemProps = { currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin };
+  const itemProps = { currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, onUpdateContent: onEdit };
 
   return (
     <div className="chat-view">

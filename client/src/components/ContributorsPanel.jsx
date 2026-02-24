@@ -37,7 +37,7 @@ function ContributorsPanel({ members, isCreator, currentUser, onRemove, onClose 
                         className="contributor-avatar"
                         style={{ background: m.user_color || '#6366f1' }}
                       >
-                        {m.user_name.charAt(0).toUpperCase()}
+                        {(m.user_name || 'Anonymous').charAt(0).toUpperCase()}
                       </span>
                       <div className="contributor-info">
                         <span className="contributor-name" style={{ color: m.user_color || '#6366f1' }}>
@@ -81,7 +81,7 @@ function ContributorsPanel({ members, isCreator, currentUser, onRemove, onClose 
                       className="contributor-avatar"
                       style={{ background: m.user_color || '#6366f1', opacity: 0.5 }}
                     >
-                      {m.user_name.charAt(0).toUpperCase()}
+                      {(m.user_name || 'Anonymous').charAt(0).toUpperCase()}
                     </span>
                     <div className="contributor-info">
                       <span className="contributor-name" style={{ color: m.user_color || '#6366f1', opacity: 0.6 }}>

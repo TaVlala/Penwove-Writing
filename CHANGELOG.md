@@ -27,10 +27,25 @@ This document records the major transformations made to the SynergY codebase dur
 - **Double-Decker Mobile Layout:** Implemented a smart, 2-line stacking system for narrow windows to ensure every control (Logo, Share, Export, Lock) remains visible and accessible.
 - **Standardized Icons:** Updated all header actions to use consistent, modern iconography (Download arrow, Share link, Theme toggle).
 
+## 🚀 Phase 2: Advanced Collaboration
+### 🖱️ Real-time Collaboration Cursors
+- **Ephemeral Tracking:** Implemented socket-based cursor broadcasting to show other users' positions in the editor.
+- **User Branding:** Cursors feature color-coded tags with user names for intuitive spatial awareness.
+
+### 🖼️ Expanded Rich Text Capabilities
+- **Multimedia Integration:** Added support for embedding images via URL directly into the editor.
+- **Link Support:** Integrated link detection and insertion for web references.
+- **Interactive Toolbar:** Updated the RichEditor toolbar with 🖼️ (Image) and 🔗 (Link) buttons.
+
+### 🎨 Visual & UX Polish
+- **Shimmering Hero:** Added a premium shimmering text animation to the Home page title and logo.
+- **Document Refinement:** Optimized Document View with better line-heights, Slate-toned typography, and Outfit branding.
+- **Custom Favicon:** Replaced default assets with the SynergY logo for a complete branded feel.
+
 ## 🛠️ Infrastructure & Fixes
-- **Dependency Management:** Installed and configured `jspdf`, `docx`, and `file-saver` in the client environment.
-- **CSS Stabilization:** Performed a deep-clean of `App.css`, resolving multiple syntax errors and orphaned brackets that were causing layout unpredictable.
-- **Component Refactoring:** Restructured `Room.jsx` header logic for better modularity and cleaner state management.
+- **Socket Optimization:** Streamlined presence and cursor events for high performance.
+- **CSS Stabilization:** Resolved trailing syntax errors in `App.css` and cleaned up legacy variables.
+- **Dependency Management:** Installed `@tiptap/extension-image` and `@tiptap/extension-link`.
 
 ---
 *Created by Antigravity — Your AI Coding Partner*

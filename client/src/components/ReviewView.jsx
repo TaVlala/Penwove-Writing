@@ -1,11 +1,13 @@
 import React from 'react';
+import RichEditor from './RichEditor';
 import { getAuthorColor, formatTime } from '../utils';
 
 function renderContent(content) {
-  if (content && /<[a-z][\s\S]*>/i.test(content)) {
-    return <div className="review-card-content rich-content" dangerouslySetInnerHTML={{ __html: content }} />;
-  }
-  return <p className="review-card-content" style={{ whiteSpace: 'pre-wrap' }}>{content}</p>;
+  return (
+    <div className="review-card-content rich-content">
+      <RichEditor initialContent={content} editable={false} />
+    </div>
+  );
 }
 
 function ReviewView({ contributions, currentUser, isCreator, onApprove, onReject, onReorder }) {
@@ -62,7 +64,7 @@ function ReviewView({ contributions, currentUser, isCreator, onApprove, onReject
                 <div key={c.id} className={`review-card review-card--pending${isOwn ? ' review-card--own' : ''}`}>
                   <div className="review-card-header">
                     <span className="review-card-avatar" style={{ background: color }}>
-                      {c.author_name.charAt(0).toUpperCase()}
+                      {(c.author_name || 'Anonymous').charAt(0).toUpperCase()}
                     </span>
                     <span className="review-card-author" style={{ color }}>
                       {c.author_name}
@@ -131,7 +133,7 @@ function ReviewView({ contributions, currentUser, isCreator, onApprove, onReject
                   <div className="review-card-body">
                     <div className="review-card-header">
                       <span className="review-card-avatar" style={{ background: color }}>
-                        {c.author_name.charAt(0).toUpperCase()}
+                        {(c.author_name || 'Anonymous').charAt(0).toUpperCase()}
                       </span>
                       <span className="review-card-author" style={{ color }}>
                         {c.author_name}
@@ -162,7 +164,7 @@ function ReviewView({ contributions, currentUser, isCreator, onApprove, onReject
                 <div key={c.id} className="review-card review-card--rejected">
                   <div className="review-card-header">
                     <span className="review-card-avatar" style={{ background: color }}>
-                      {c.author_name.charAt(0).toUpperCase()}
+                      {(c.author_name || 'Anonymous').charAt(0).toUpperCase()}
                     </span>
                     <span className="review-card-author" style={{ color }}>
                       {c.author_name}

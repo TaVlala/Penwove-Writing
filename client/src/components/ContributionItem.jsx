@@ -3,16 +3,11 @@ import CommentSection from './CommentSection';
 import RichEditor from './RichEditor';
 import { getAuthorColor, formatTime } from '../utils';
 
-function renderContent(content) {
-  if (content && /<[a-z][\s\S]*>/i.test(content)) {
-    return <div className="rich-content" dangerouslySetInnerHTML={{ __html: content }} />;
-  }
-  return <p style={{ whiteSpace: 'pre-wrap' }}>{content}</p>;
-}
+// function renderContent is moved inside ContributionItem to access state
 
 const REACTIONS = ['👍', '❤️', '😄', '🔥', '✨'];
 
-function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin }) {
+function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, onUpdateContent }) {
   const [showComments, setShowComments] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -21,8 +16,22 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
   const [editEmpty, setEditEmpty] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [activeInlineId, setActiveInlineId] = useState(null);
   const pickerRef = useRef(null);
   const editRef = useRef(null);
+
+  const handleInlineCommentClick = (commentId) => {
+    setActiveInlineId(commentId);
+    setShowComments(true);
+  };
+
+  const handleInlineCommentCreate = async (commentId, updatedHTML) => {
+    // 1. Update the contribution content with the new mark
+    await onUpdateContent?.(contribution.id, updatedHTML);
+    // 2. Open comments and focus on the new one
+    setActiveInlineId(commentId);
+    setShowComments(true);
+  };
 
   const authorColor = contribution.author_color || getAuthorColor(contribution.author_id);
   const isOwn = contribution.author_id === currentUser?.id;
@@ -103,7 +112,7 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
           style={{ background: authorColor }}
           title={contribution.author_name}
         >
-          {contribution.author_name.charAt(0).toUpperCase()}
+          {(contribution.author_name || 'Anonymous').charAt(0).toUpperCase()}
         </span>
         <span className="author-name">{contribution.author_name}</span>
         <time className="contribution-time" dateTime={new Date(contribution.created_at).toISOString()}>
@@ -165,7 +174,14 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
             </div>
           </div>
         ) : (
-          renderContent(contribution.content)
+          <div className="rich-content">
+            <RichEditor
+              initialContent={contribution.content}
+              editable={false}
+              onCommentClick={handleInlineCommentClick}
+              onInlineCommentCreate={handleInlineCommentCreate}
+            />
+          </div>
         )}
       </div>
 
@@ -217,6 +233,8 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
           comments={contribution.comments || []}
           currentUser={currentUser}
           onAddComment={onAddComment}
+          activeInlineId={activeInlineId}
+          onResetInline={() => setActiveInlineId(null)}
         />
       )}
     </article>

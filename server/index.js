@@ -389,7 +389,7 @@ app.get('/api/contributions/:id/comments', (req, res) => {
 });
 
 app.post('/api/contributions/:id/comments', (req, res) => {
-  const { author_id, author_name, content, parent_id } = req.body;
+  const { author_id, author_name, content, parent_id, inline_id } = req.body;
   if (!content?.trim() || !author_id || !author_name) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -404,6 +404,7 @@ app.post('/api/contributions/:id/comments', (req, res) => {
     author_name,
     content: content.trim(),
     parent_id: parent_id || null,
+    inline_id: inline_id || null,
     created_at: now()
   };
   store.comments.push(comment);
@@ -544,6 +545,10 @@ io.on('connection', (socket) => {
 
   socket.on('typing', ({ roomId, userName }) => {
     socket.to(roomId).emit('user_typing', { userName });
+  });
+
+  socket.on('cursor_update', ({ roomId, userId, userName, userColor, position }) => {
+    socket.to(roomId).emit('cursor_update', { userId, userName, userColor, position });
   });
 
   socket.on('disconnect', () => {

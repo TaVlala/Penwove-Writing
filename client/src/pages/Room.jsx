@@ -41,6 +41,7 @@ function Room() {
   const [showContributors, setShowContributors] = useState(false);
   const [membershipStatus, setMembershipStatus] = useState(null); // null | 'removed' | 'entry_locked'
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [otherCursors, setOtherCursors] = useState({}); // { userId: { pos, color, name } }
 
   const socketRef = useRef(null);
   const typingTimerRef = useRef({});
@@ -155,6 +156,22 @@ function Room() {
 
     socket.on('presence_update', (users) => {
       setOnlineUsers(users);
+      // Clean up cursors for users who went offline
+      setOtherCursors(prev => {
+        const next = { ...prev };
+        const onlineIds = new Set(users.map(u => u.userId));
+        Object.keys(next).forEach(id => {
+          if (!onlineIds.has(id)) delete next[id];
+        });
+        return next;
+      });
+    });
+
+    socket.on('cursor_update', ({ userId, userName, userColor, position }) => {
+      setOtherCursors(prev => ({
+        ...prev,
+        [userId]: { position, color: userColor, name: userName }
+      }));
     });
 
     return () => {
@@ -179,9 +196,10 @@ function Room() {
   // Load room, contributions, and chat history
   useEffect(() => {
     setLoading(true);
+    setError('');
     Promise.all([
       fetch(`/api/rooms/${roomId}`).then(r => {
-        if (!r.ok) throw new Error('Room not found');
+        if (!r.ok) throw new Error(`Room fetch failed: ${r.status}`);
         return r.json();
       }),
       fetch(`/api/rooms/${roomId}/contributions`).then(r => r.json()),
@@ -192,7 +210,10 @@ function Room() {
         setContributions(contribData);
         setChatMessages(chatData);
       })
-      .catch(err => setError(err.message))
+      .catch(err => {
+        console.error('Room loading error:', err);
+        setError(err.message);
+      })
       .finally(() => setLoading(false));
   }, [roomId]);
 
@@ -283,6 +304,17 @@ function Room() {
     socketRef.current.emit('typing', { roomId, userName: user.name });
   };
 
+  const handleCursorUpdate = (position) => {
+    if (!user || !socketRef.current) return;
+    socketRef.current.emit('cursor_update', {
+      roomId,
+      userId: user.id,
+      userName: user.name,
+      userColor: user.color || USER_COLORS[5],
+      position
+    });
+  };
+
   const handleEditContribution = async (id, newContent) => {
     const res = await fetch(`/api/contributions/${id}`, {
       method: 'PATCH',
@@ -349,7 +381,7 @@ function Room() {
     });
   };
 
-  const handleAddComment = async (contributionId, content, parentId = null) => {
+  const handleAddComment = async (contributionId, content, parentId = null, inlineId = null) => {
     if (!user || !content.trim()) return;
     const res = await fetch(`/api/contributions/${contributionId}/comments`, {
       method: 'POST',
@@ -358,7 +390,8 @@ function Room() {
         author_id: user.id,
         author_name: user.name,
         content: content.trim(),
-        parent_id: parentId
+        parent_id: parentId,
+        inline_id: inlineId
       })
     });
     return res.json();
@@ -633,15 +666,15 @@ function Room() {
     );
   }
 
-  const isCreator = room?.creator_id === user?.id;
+  const isCreator = room?.creator_id && user?.id && room.creator_id === user.id;
 
   // Collab view: show pending + approved; also show own rejected so author knows
-  const collabContributions = contributions.filter(c =>
-    c.status !== 'rejected' || c.author_id === user?.id || isCreator
+  const collabContributions = (Array.isArray(contributions) ? contributions : []).filter(c =>
+    c.status !== 'rejected' || (user?.id && c.author_id === user.id) || isCreator
   );
 
   // Document view: only approved, sorted by sort_order ascending
-  const documentContributions = contributions
+  const documentContributions = (Array.isArray(contributions) ? contributions : [])
     .filter(c => (c.status || 'approved') === 'approved')
     .sort((a, b) => (a.sort_order || a.created_at) - (b.sort_order || b.created_at));
 
@@ -731,16 +764,16 @@ function Room() {
             </div>
           </div>
           {/* Online presence avatars */}
-          {onlineUsers.length > 0 && (
+          {Array.isArray(onlineUsers) && onlineUsers.length > 0 && (
             <div className="presence-avatars">
               {onlineUsers.slice(0, 5).map(u => (
                 <span
                   key={u.userId}
                   className={`presence-avatar${u.userId === user?.id ? ' presence-avatar--self' : ''}`}
                   style={{ background: u.userColor }}
-                  title={u.userId === user?.id ? `${u.userName} (you)` : u.userName}
+                  title={u.userId === user?.id ? `${u.userName || 'Unknown'} (you)` : u.userName || 'Unknown'}
                 >
-                  {u.userName.charAt(0).toUpperCase()}
+                  {(u.userName || '?').charAt(0).toUpperCase()}
                 </span>
               ))}
               {onlineUsers.length > 5 && (
@@ -827,7 +860,7 @@ function Room() {
 
         {view === 'collab' && (
           <ChatSidebar
-            messages={chatMessages}
+            messages={Array.isArray(chatMessages) ? chatMessages : []}
             currentUser={user}
             onSend={handleSendChat}
             isOpen={chatOpen}
@@ -857,12 +890,14 @@ function Room() {
             <form className="contribution-form" onSubmit={handleSubmit}>
               <RichEditor
                 ref={editorRef}
-                placeholder={`Write something, ${user.name}…`}
+                placeholder={`Write something, ${user?.name || 'Contributor'}…`}
+                otherCursors={otherCursors}
                 onChange={(html, isEmpty) => {
                   setEditorHTML(html);
                   setEditorEmpty(isEmpty);
                   handleTyping();
                 }}
+                onSelectionUpdate={handleCursorUpdate}
                 onSubmit={handleSubmit}
               />
               <div className="form-actions">

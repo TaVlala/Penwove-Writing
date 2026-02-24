@@ -73,7 +73,7 @@ function ChatSidebar({ messages, currentUser, onSend, isOpen, onToggle }) {
                   style={{ background: msg.author_color || '#6366f1' }}
                   title={msg.author_name}
                 >
-                  {msg.author_name.charAt(0).toUpperCase()}
+                  {(msg.author_name || 'Anonymous').charAt(0).toUpperCase()}
                 </span>
                 <div className="chat-message-body">
                   <div className="chat-message-meta">
