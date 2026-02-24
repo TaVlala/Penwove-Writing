@@ -151,3 +151,8 @@
 - `BUBBLE MENU` — `.bubble-menu`, `.bubble-menu-btn` (dark themed floating menu)
 - `INLINE COMMENTS` — `.inline-comment` (dashed underline)
 
+### Phase 3 Updates (Feb 24, 2026)
+1. **Inline Highlighting** — select text in editor or published post to apply highlights (🖍️)
+2. **Inline Comments** — selection-based commenting; clicking text filters sidebar to that thread
+3. **Bubble Menu** — floating selection menu for quick Actions (Highlight/Comment)
+
