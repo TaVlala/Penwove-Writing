@@ -7,6 +7,7 @@ import DocumentView from '../components/DocumentView';
 import ReviewView from '../components/ReviewView';
 import ChatSidebar from '../components/ChatSidebar';
 import ContributorsPanel from '../components/ContributorsPanel';
+import WordleGame from '../components/WordleGame';
 import NotificationBell from '../components/NotificationBell';
 import RichEditor from '../components/RichEditor';
 import { USER_COLORS } from '../utils';
@@ -38,9 +39,10 @@ function Room() {
   const [nameInput, setNameInput] = useState('');
   const [joinColor, setJoinColor] = useState(USER_COLORS[5]);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
   const [members, setMembers] = useState([]);
   const [showContributors, setShowContributors] = useState(false);
+  const [showWordle, setShowWordle] = useState(false);
   const [membershipStatus, setMembershipStatus] = useState(null); // null | 'removed' | 'entry_locked'
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [otherCursors, setOtherCursors] = useState({}); // { userId: { pos, color, name } }
@@ -821,6 +823,13 @@ function Room() {
             >
               👥 {members.filter(m => !m.removed_at).length}
             </button>
+            <button
+              className={`btn-icon${showWordle ? ' active' : ''}`}
+              onClick={() => setShowWordle(v => !v)}
+              title="Play Wordle"
+            >
+              🎮
+            </button>
           </div>
 
           {isCreator && (
@@ -955,6 +964,9 @@ function Room() {
           onClose={() => setShowContributors(false)}
         />
       )}
+
+      {/* Wordle game panel */}
+      {showWordle && <WordleGame onClose={() => setShowWordle(false)} />}
 
       {/* Confirm dialog */}
       {confirmDialog && (
