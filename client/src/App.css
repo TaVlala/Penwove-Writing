@@ -3321,26 +3321,28 @@ body {
 
 .wordle-key-row {
   display: flex;
-  gap: 5px;
-  justify-content: center;
+  gap: 4px;
+  width: 100%;
 }
 
 .wordle-key {
-  min-width: 34px;
-  height: 54px;
+  flex: 1;
+  height: 52px;
   border-radius: 6px;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-family: var(--font);
   transition: background 0.2s, color 0.2s, transform 0.1s;
   display: flex;
   align-items: center;
   justify-content: center;
   user-select: none;
+  min-width: 0;
+  padding: 0;
 }
 
 .wordle-key:hover {
@@ -3349,8 +3351,8 @@ body {
 }
 
 .wordle-key--wide {
-  min-width: 52px;
-  font-size: 0.72rem;
+  flex: 1.5;
+  font-size: 0.7rem;
 }
 
 .wordle-key--correct {
