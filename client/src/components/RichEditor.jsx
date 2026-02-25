@@ -68,6 +68,7 @@ const RichEditor = forwardRef(function RichEditor(
 
   const [linkPopover, setLinkPopover] = useState({ visible: false, value: '' });
   const [readonlyMenu, setReadonlyMenu] = useState({ visible: false, top: 0, left: 0 });
+  const [thesaurus, setThesaurus] = useState({ visible: false, word: '', synonyms: [], loading: false, pos: { top: 0, left: 0 } });
 
   const CursorExtension = useMemo(() => {
     return Extension.create({
@@ -201,6 +202,39 @@ const RichEditor = forwardRef(function RichEditor(
     setLinkPopover({ visible: false, value: '' });
   };
 
+  const fetchSynonyms = async (word, pos) => {
+    if (!word) return;
+    setThesaurus({ visible: true, word, synonyms: [], loading: true, pos });
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
+      if (!res.ok) throw new Error('Not found');
+      const data = await res.json();
+      const syns = new Set();
+      data.forEach(entry => {
+        entry.meanings.forEach(m => {
+          if (m.synonyms) m.synonyms.forEach(s => syns.add(s));
+          m.definitions.forEach(d => {
+            if (d.synonyms) d.synonyms.forEach(s => syns.add(s));
+          });
+        });
+      });
+      setThesaurus(prev => ({ ...prev, synonyms: Array.from(syns).slice(0, 10), loading: false }));
+    } catch (err) {
+      setThesaurus(prev => ({ ...prev, loading: false, word: 'No synonyms found.' }));
+    }
+  };
+
+  const handleThesaurusClick = (e) => {
+    e.preventDefault();
+    const sel = window.getSelection();
+    if (!sel.isCollapsed) {
+      const word = sel.toString().trim();
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      // position relative to viewport
+      fetchSynonyms(word, { top: rect.bottom + 10, left: rect.left });
+    }
+  };
+
   if (!editor) return null;
 
   return (
@@ -214,8 +248,43 @@ const RichEditor = forwardRef(function RichEditor(
           const commentId = target.getAttribute('data-comment-id');
           if (commentId) onCommentClick?.(commentId);
         }
+        // Hide thesaurus on click away
+        if (!e.target.closest('.thesaurus-popover') && !e.target.closest('.bubble-menu-btn')) {
+          setThesaurus(prev => ({ ...prev, visible: false }));
+        }
       }}
     >
+      {thesaurus.visible && (
+        <div
+          className="thesaurus-popover"
+          style={{ position: 'fixed', top: thesaurus.pos.top, left: thesaurus.pos.left, zIndex: 1000 }}
+        >
+          <div className="thesaurus-header">
+            <strong>{thesaurus.word}</strong>
+            <button onClick={() => setThesaurus(prev => ({ ...prev, visible: false }))}>✕</button>
+          </div>
+          <div className="thesaurus-body">
+            {thesaurus.loading ? <div className="spinner-sm" /> : (
+              <div className="synonym-list">
+                {thesaurus.synonyms.length > 0 ? thesaurus.synonyms.map(s => (
+                  <button
+                    key={s}
+                    className="synonym-btn"
+                    onClick={() => {
+                      if (editable) {
+                        editor.chain().focus().insertContent(s).run();
+                      }
+                      setThesaurus(prev => ({ ...prev, visible: false }));
+                    }}
+                  >
+                    {s}
+                  </button>
+                )) : <span>No synonyms found for "{thesaurus.word}"</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Floating menu for readonly mode — rendered via fixed positioning to escape overflow:hidden parents */}
       {!editable && readonlyMenu.visible && (
         <div
@@ -244,6 +313,12 @@ const RichEditor = forwardRef(function RichEditor(
             }}
           >
             🖍️ Highlight
+          </button>
+          <button
+            className="bubble-menu-btn"
+            onMouseDown={handleThesaurusClick}
+          >
+            📖 Thesaurus
           </button>
         </div>
       )}
@@ -431,6 +506,12 @@ const RichEditor = forwardRef(function RichEditor(
               onClick={() => editor.chain().focus().toggleHighlight().run()}
             >
               🖍️ Highlight
+            </button>
+            <button
+              className="bubble-menu-btn"
+              onClick={handleThesaurusClick}
+            >
+              📖 Thesaurus
             </button>
           </div>
         </BubbleMenu>

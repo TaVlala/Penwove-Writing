@@ -12,7 +12,8 @@
 - **Client**: React 18 + Vite, port 5173
 - **Server**: Node.js + Express + Socket.io, port 3001
 - **DB**: JSON file (`server/data/db.json`) via `server/db.js` (atomic save, EMPTY schema)
-- **Rich editor**: Tiptap (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-align`, `@tiptap/extension-highlight`, `@tiptap/extension-bubble-menu`)
+- **Rich editor**: Tiptap (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-align`, `@tiptap/extension-highlight`, `@tiptap/extension-bubble-menu`, `@tiptap/extension-image`, `@tiptap/extension-link`)
+- **Export**: `jspdf` (PDF), `docx` (Word), `file-saver` (download automation)
 - **Deploy**: Railway — build cmd: `cd server && npm install && cd ../client && npm install && npm run build`
 
 ## Architecture
@@ -115,7 +116,7 @@
 9. **Contributors panel** (`👥 N` button):
    - Active members: avatar, name, contribution count, YOU/ADMIN badges, Remove button (admin)
    - Removed members section (admin only): shows removed_at time + REMOVED badge
-10. **Export** — download document as text
+10. **Advanced Export** — download document as PDF, Word (.docx), or plain text (.txt); premium animated dropdown menu
 11. **Share** — copy room link
 12. **Notifications bell**
 13. **Dark/light theme toggle**
@@ -124,6 +125,10 @@
 16. **Presence avatars** — stacked colored bubbles in header show who's online; green dot; purple ring for self; +N overflow; tooltips
 17. **Pinned contributions** — admin can pin any contribution (📌 button); pinned one floats to top of collab feed with amber banner; only one pin per room
 18. **Text alignment** — left / center / right / justify via `@tiptap/extension-text-align`
+19. **Real-time Cursors** — ephemeral cursor tracking with user branding (color tags)
+20. **Multimedia Support** — embed images via URL and interactive link detection in editor
+21. **Oceanic Branding** — high-contrast Deep Teal/Sky Blue palette; unified 48px header height; glassmorphism (`backdrop-filter`) handles
+22. **Mobile Responsiveness** — double-decker header layout for narrow screens
 
 ## Key Patterns & Gotchas
 - **localStorage key**: `collab_user` (NOT `synergy_user`)
@@ -150,6 +155,8 @@
 - `PINNED CONTRIBUTIONS` — `.pinned-banner`, `.pinned-banner-label`, `.contribution--pinned`, `.pin-btn`, `.pin-btn--active`
 - `BUBBLE MENU` — `.bubble-menu`, `.bubble-menu-btn` (dark themed floating menu)
 - `INLINE COMMENTS` — `.inline-comment` (dashed underline)
+- `REAL-TIME CURSORS` — `.collaboration-cursor`, `.collaboration-cursor-label`
+- `OCEANIC UI` — `.glass`, `.room-header` (48px), `.export-dropdown`, `.shimmer`
 
 ### Phase 3 Updates (Feb 24, 2026)
 1. **Inline Highlighting** — select text in editor or published post to apply highlights (🖍️)

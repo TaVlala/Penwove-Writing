@@ -13,6 +13,7 @@ import { USER_COLORS } from '../utils';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
+import epubGenerator from 'epub-gen-memory';
 
 function Room() {
   const { id: roomId } = useParams();
@@ -573,6 +574,36 @@ function Room() {
     setShowExportMenu(false);
   };
 
+  const handleExportEpub = async () => {
+    const title = room?.title || 'Untitled Story';
+    const content = contributions
+      .filter(c => (c.status || 'approved') === 'approved')
+      .sort((a, b) => (a.sort_order || a.created_at) - (b.sort_order || b.created_at))
+      .map(c => ({
+        title: `By ${c.author_name}`,
+        data: `<h3>${c.author_name} — ${new Date(c.created_at).toLocaleString()}</h3>${c.content}`
+      }));
+
+    const option = {
+      title,
+      author: 'SynergY Contributors',
+      publisher: 'SynergY Writing Platform',
+      content
+    };
+
+    try {
+      const result = await epubGenerator(option, content);
+      // epubGenerator returns a Buffer (or Uint8Array) in browser if polyfilled correctly,
+      // or it might return a Blob depending on the internal version.
+      // We'll wrap it in a Blob to be safe for saveAs.
+      const blob = result instanceof Blob ? result : new Blob([result], { type: 'application/epub+zip' });
+      saveAs(blob, `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.epub`);
+    } catch (err) {
+      console.error('EPUB Export failed:', err);
+    }
+    setShowExportMenu(false);
+  };
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setLinkCopied(true);
@@ -773,6 +804,13 @@ function Room() {
                     <div className="export-info">
                       <span className="export-label">Word Document</span>
                       <span className="export-ext">.docx</span>
+                    </div>
+                  </button>
+                  <button onClick={handleExportEpub} className="export-item">
+                    <span className="export-icon">📙</span>
+                    <div className="export-info">
+                      <span className="export-label">EPUB Book</span>
+                      <span className="export-ext">.epub</span>
                     </div>
                   </button>
                 </div>
