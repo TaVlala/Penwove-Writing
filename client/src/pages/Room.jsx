@@ -13,7 +13,6 @@ import { USER_COLORS } from '../utils';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
-import epubGenerator from 'epub-gen-memory';
 
 function Room() {
   const { id: roomId } = useParams();
@@ -560,20 +559,18 @@ function Room() {
       .filter(c => (c.status || 'approved') === 'approved')
       .sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) || new Date(a.created_at) - new Date(b.created_at));
 
-    // Single chapter with all approved content joined
+    // EPUB uses server-side generation (epub-gen-memory needs Node.js path/fs internals)
     const bodyHtml = approved.map(c => `<p>${stripHTML(c.content)}</p>`).join('\n');
-    const content = [{ title, data: bodyHtml }];
-
-    const option = {
-      title,
-      author: 'SynergY Contributors',
-      publisher: 'SynergY Writing Platform',
-      content,
-    };
+    const chapters = [{ title, content: bodyHtml || '<p> </p>' }];
 
     try {
-      const result = await epubGenerator(option);
-      const blob = result instanceof Blob ? result : new Blob([result], { type: 'application/epub+zip' });
+      const res = await fetch(`/api/rooms/${roomId}/export/epub`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, chapters }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
       saveAs(blob, `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.epub`);
     } catch (err) {
       console.error('EPUB Export failed:', err);

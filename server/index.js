@@ -572,6 +572,27 @@ if (isProd) {
   });
 }
 
+// ============ EPUB EXPORT ============
+
+app.post('/api/rooms/:id/export/epub', async (req, res) => {
+  const { title, chapters } = req.body;
+  if (!title || !Array.isArray(chapters) || chapters.length === 0) {
+    return res.status(400).json({ error: 'title and chapters required' });
+  }
+  try {
+    const epubGen = require('epub-gen-memory');
+    const fn = epubGen.default || epubGen;
+    const buffer = await fn({ title, author: 'SynergY Contributors', publisher: 'SynergY Writing Platform' }, chapters);
+    const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    res.setHeader('Content-Type', 'application/epub+zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}.epub"`);
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error('EPUB generation failed:', err);
+    res.status(500).json({ error: 'EPUB generation failed' });
+  }
+});
+
 // ============ START ============
 
 const PORT = process.env.PORT || 3001;
