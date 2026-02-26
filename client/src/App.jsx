@@ -69,7 +69,7 @@ function App() {
 
   return (
     <UserContext.Provider value={{ user, login, logout, theme, toggleTheme }}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/room/:id" element={<Room />} />

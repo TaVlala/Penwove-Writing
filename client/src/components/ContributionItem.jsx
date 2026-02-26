@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CommentSection from './CommentSection';
 import RichEditor from './RichEditor';
-import { getAuthorColor, formatTime } from '../utils';
+import { getAuthorColor, formatTime, stripHTML } from '../utils';
 
 // function renderContent is moved inside ContributionItem to access state
 
 const REACTIONS = ['👍', '❤️', '😄', '🔥', '✨'];
 
-function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, onUpdateContent }) {
-  const [showComments, setShowComments] = useState(false);
+function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, onUpdateContent, onToggleComments, isActiveComment }) {
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -22,13 +21,13 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
 
   const handleInlineCommentClick = (commentId) => {
     setActiveInlineId(commentId);
-    setShowComments(true);
+    onToggleComments(contribution.id);
   };
 
   const handleInlineCommentCreate = async (commentId, updatedHTML) => {
     await onUpdateContent?.(contribution.id, updatedHTML);
     setActiveInlineId(commentId);
-    setShowComments(true);
+    onToggleComments(contribution.id);
   };
 
   const handleHighlightUpdate = async (updatedHTML) => {
@@ -96,7 +95,7 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
       await onLoadComments(contribution.id);
     }
     setCommentsLoaded(true);
-    setShowComments(v => !v);
+    onToggleComments(contribution.id);
   };
 
   const hasCommentData = commentsLoaded || contribution.comments !== undefined;
@@ -104,7 +103,7 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
 
   return (
     <article
-      className={`contribution ${isOwn ? 'contribution--own' : ''} ${contribution.pinned ? 'contribution--pinned' : ''}`}
+      className={`contribution ${isOwn ? 'contribution--own' : ''} ${contribution.pinned ? 'contribution--pinned' : ''} ${isActiveComment ? 'contribution--active-comment' : ''}`}
       style={{ borderLeftColor: authorColor, borderLeftWidth: '4px' }}
     >
       {/* Header */}
@@ -225,22 +224,10 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
           </div>
         </div>
 
-        <button className="comment-toggle" onClick={handleToggleComments}>
+        <button className={`comment-toggle ${isActiveComment ? 'active' : ''}`} onClick={handleToggleComments}>
           💬 {hasCommentData ? commentCount : '…'} comment{commentCount !== 1 ? 's' : ''}
         </button>
       </div>
-
-      {/* Comments */}
-      {showComments && (
-        <CommentSection
-          contributionId={contribution.id}
-          comments={contribution.comments || []}
-          currentUser={currentUser}
-          onAddComment={onAddComment}
-          activeInlineId={activeInlineId}
-          onResetInline={() => setActiveInlineId(null)}
-        />
-      )}
     </article>
   );
 }

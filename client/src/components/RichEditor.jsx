@@ -3,15 +3,35 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import Link from '@tiptap/extension-link';
+
 import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
+import FontFamily from '@tiptap/extension-font-family';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
 import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
 import { Comment } from '../extensions/Comment';
 import { Extension } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
 import * as PMView from '@tiptap/pm/view';
-const { Decoration, DecorationSet } = PMView;
+
+const CaseToggle = Extension.create({
+  name: 'caseToggle',
+  addCommands() {
+    return {
+      toggleCase: () => ({ state, commands }) => {
+        const { from, to, empty } = state.selection;
+        if (empty) return false;
+        const text = state.doc.textBetween(from, to);
+        let nextText = '';
+        if (text === text.toUpperCase()) nextText = text.toLowerCase();
+        else if (text === text.toLowerCase()) nextText = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+        else nextText = text.toUpperCase();
+        return commands.insertContentAt({ from, to }, nextText);
+      },
+    };
+  },
+});
 
 // ── Global registry so only ONE selectionchange listener is ever active ──────
 // Maps each readonly instance's entry { containerRef, setMenu } so the single
@@ -52,7 +72,7 @@ function handleGlobalSelectionChange() {
 }
 
 const RichEditor = forwardRef(function RichEditor(
-  { initialContent = '', onChange, onSubmit, placeholder, otherCursors = {}, onSelectionUpdate, onCommentClick, onInlineCommentCreate, onHighlightUpdate, editable = true, currentUserName = 'Anonymous' },
+  { initialContent = '', onChange, onSubmit, placeholder, otherCursors = {}, onSelectionUpdate, onCommentClick, onInlineCommentCreate, onHighlightUpdate, editable = true, currentUserName = 'Anonymous', showCommentBubble = true },
   ref
 ) {
   const onChangeRef = useRef(onChange);
@@ -99,9 +119,9 @@ const RichEditor = forwardRef(function RichEditor(
                   label.innerText = name || 'Anonymous';
                   widget.appendChild(label);
 
-                  decos.push(Decoration.widget(pos, widget));
+                  decos.push(PMView.Decoration.widget(pos, widget));
                 });
-                return DecorationSet.create(state.doc, decos);
+                return PMView.DecorationSet.create(state.doc, decos);
               },
             },
           }),
@@ -113,22 +133,19 @@ const RichEditor = forwardRef(function RichEditor(
   const editor = useEditor({
     extensions: [
       StarterKit,
+      TextStyle,
+      FontFamily,
+      Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: 'rich-link',
-        },
-      }),
       Image.configure({
         HTMLAttributes: {
           class: 'rich-image',
         },
       }),
       Highlight.configure({ multicolor: true }),
-      BubbleMenuExtension,
       Comment,
       CursorExtension,
+      CaseToggle,
     ],
     content: initialContent,
     editorProps: {
@@ -144,10 +161,10 @@ const RichEditor = forwardRef(function RichEditor(
         return false;
       },
     },
-    onUpdate({ editor }) {
+    onUpdate: ({ editor }) => {
       onChangeRef.current?.(editor.getHTML(), editor.isEmpty);
     },
-    onSelectionUpdate({ editor }) {
+    onSelectionUpdate: ({ editor }) => {
       onSelectionUpdateRef.current?.(editor.state.selection.head);
     },
   });
@@ -184,12 +201,13 @@ const RichEditor = forwardRef(function RichEditor(
     };
   }, [editable]);
 
+
   useImperativeHandle(ref, () => ({
     clearContent() {
-      editor?.commands.clearContent(true);
+      if (editor) editor.commands.clearContent(true);
     },
     focus() {
-      editor?.commands.focus();
+      if (editor) editor.commands.focus();
     },
   }), [editor]);
 
@@ -205,19 +223,31 @@ const RichEditor = forwardRef(function RichEditor(
   const fetchSynonyms = async (word, pos) => {
     if (!word) return;
     const clean = word.trim().toLowerCase();
+
+    // Context-aware logic: extract surrounding sentence
+    let contextStr = '';
+    if (editor) {
+      const { from, to } = editor.state.selection;
+      const doc = editor.state.doc;
+      // Get ~50 chars before and after for context
+      const start = Math.max(0, from - 50);
+      const end = Math.min(doc.content.size, to + 50);
+      contextStr = doc.textBetween(start, end, ' ');
+    }
+
     setThesaurus({ visible: true, word: word.trim(), synonyms: [], loading: true, pos });
     try {
-      // Datamuse: rel_syn = synonyms, ml = means-like; fetch both for richness
-      const [synRes, mlRes] = await Promise.all([
-        fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(clean)}&max=40`),
-        fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(clean)}&max=20`),
-      ]);
-      const [synData, mlData] = await Promise.all([synRes.json(), mlRes.json()]);
+      // Datamuse: rel_syn = synonyms, ml = means-like (with context strings)
+      const url = `https://api.datamuse.com/words?rel_syn=${encodeURIComponent(clean)}&max=40${contextStr ? `&ml=${encodeURIComponent(contextStr)}` : ''}`;
+      const res = await fetch(url);
+      const synData = await res.json();
+
       const seen = new Set();
       const syns = [];
-      [...synData, ...mlData].forEach(({ word: w }) => {
+      synData.forEach(({ word: w }) => {
         if (w && w !== clean && !seen.has(w)) { seen.add(w); syns.push(w); }
       });
+
       if (syns.length === 0) throw new Error('none');
       setThesaurus(prev => ({ ...prev, synonyms: syns.slice(0, 30), loading: false }));
     } catch {
@@ -292,34 +322,30 @@ const RichEditor = forwardRef(function RichEditor(
           className="readonly-bubble-menu"
           style={{ position: 'fixed', top: readonlyMenu.top, left: readonlyMenu.left }}
         >
+          {showCommentBubble && (
+            <button
+              className="bubble-menu-btn"
+              onMouseDown={e => {
+                e.preventDefault();
+                const commentId = `comment-${Date.now()}`;
+                editor.chain().focus().setComment(commentId, currentUserName).run();
+                onInlineCommentCreate?.(commentId, editor.getHTML());
+                setReadonlyMenu(m => ({ ...m, visible: false }));
+              }}
+            >
+              💬 Comment
+            </button>
+          )}
           <button
             className="bubble-menu-btn"
             onMouseDown={e => {
               e.preventDefault();
-              const commentId = `comment-${Date.now()}`;
-              editor.chain().setComment(commentId, currentUserName).run();
-              onInlineCommentCreate?.(commentId, editor.getHTML());
-              setReadonlyMenu(m => ({ ...m, visible: false }));
-            }}
-          >
-            💬 Comment
-          </button>
-          <button
-            className="bubble-menu-btn"
-            onMouseDown={e => {
-              e.preventDefault();
-              editor.chain().toggleHighlight().run();
+              editor.chain().focus().toggleHighlight().run();
               onHighlightUpdate?.(editor.getHTML());
               setReadonlyMenu(m => ({ ...m, visible: false }));
             }}
           >
             🖍️ Highlight
-          </button>
-          <button
-            className="bubble-menu-btn"
-            onMouseDown={handleThesaurusClick}
-          >
-            📖 Thesaurus
           </button>
         </div>
       )}
@@ -457,6 +483,46 @@ const RichEditor = forwardRef(function RichEditor(
 
           <div className="toolbar-divider" />
 
+          {/* Font Family Selector */}
+          <select
+            className="toolbar-select"
+            onChange={e => editor.chain().focus().setFontFamily(e.target.value).run()}
+            value={editor.getAttributes('textStyle').fontFamily || ''}
+          >
+            <option value="">Default Font</option>
+            <option value="Inter, sans-serif">Sans-Serif</option>
+            <option value="Merriweather, serif">Serif</option>
+            <option value="JetBrains Mono, monospace">Mono</option>
+          </select>
+
+          <div className="toolbar-divider" />
+
+          {/* Color Picker */}
+          <div className="toolbar-color-wrap">
+            <input
+              type="color"
+              className="toolbar-color-input"
+              onInput={e => editor.chain().focus().setColor(e.target.value).run()}
+              value={editor.getAttributes('textStyle').color || '#000000'}
+              title="Font Color"
+            />
+            <span className="toolbar-color-icon">🎨</span>
+          </div>
+
+          <div className="toolbar-divider" />
+
+          {/* Case Toggle */}
+          <button
+            type="button"
+            className="toolbar-btn"
+            onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleCase().run(); }}
+            title="Toggle Case (UPPER/lower/Sentence)"
+          >
+            Aa
+          </button>
+
+          <div className="toolbar-divider" />
+
           <button
             type="button"
             className={`toolbar-btn${editor.isActive('highlight') ? ' toolbar-btn--active' : ''}`}
@@ -480,14 +546,26 @@ const RichEditor = forwardRef(function RichEditor(
             }}
             title="Inline Comment"
           >💬+</button>
+
+          <div className="toolbar-divider" />
+
+          {/* Relocated Thesaurus Button */}
+          <button
+            type="button"
+            className="toolbar-btn"
+            onMouseDown={handleThesaurusClick}
+            title="Thesaurus"
+          >
+            📖
+          </button>
         </div>
       )}
 
       <EditorContent editor={editor} />
 
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} shouldShow={({ editor, from, to }) => {
-          return !editor.isDestroyed && editor.isEditable && from !== to;
+        <BubbleMenu editor={editor} shouldShow={({ editor: e, from, to }) => {
+          return !e.isDestroyed && e.isEditable && from !== to && showCommentBubble;
         }}>
           <div className="bubble-menu">
             <button
@@ -507,12 +585,6 @@ const RichEditor = forwardRef(function RichEditor(
               onClick={() => editor.chain().focus().toggleHighlight().run()}
             >
               🖍️ Highlight
-            </button>
-            <button
-              className="bubble-menu-btn"
-              onClick={handleThesaurusClick}
-            >
-              📖 Thesaurus
             </button>
           </div>
         </BubbleMenu>

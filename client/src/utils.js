@@ -31,3 +31,9 @@ export function formatTime(timestamp) {
     hour: '2-digit', minute: '2-digit'
   });
 }
+export function stripHTML(html) {
+  if (!html) return '';
+  // Use DOMParser to safely extract text from HTML
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return doc.body.textContent || "";
+}

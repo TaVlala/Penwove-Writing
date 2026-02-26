@@ -1,7 +1,7 @@
 import React from 'react';
 import ContributionItem from './ContributionItem';
 
-function ChatView({ contributions, currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin }) {
+function ChatView({ contributions, currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, activeCommentId, onToggleComments }) {
   if (!Array.isArray(contributions) || contributions.length === 0) {
     return (
       <div className="empty-state">
@@ -15,7 +15,7 @@ function ChatView({ contributions, currentUser, isCreator, onDelete, onEdit, onR
   const pinned = contributions.find(c => c.pinned);
   const rest = contributions.filter(c => !c.pinned);
 
-  const itemProps = { currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, onUpdateContent: onEdit };
+  const itemProps = { currentUser, isCreator, onDelete, onEdit, onReact, onAddComment, onLoadComments, onPin, onUpdateContent: onEdit, onToggleComments };
 
   return (
     <div className="chat-view">
@@ -25,13 +25,14 @@ function ChatView({ contributions, currentUser, isCreator, onDelete, onEdit, onR
             <span className="pinned-icon">📌</span>
             <span>Pinned by admin</span>
           </div>
-          <ContributionItem key={pinned.id} contribution={pinned} {...itemProps} />
+          <ContributionItem key={pinned.id} contribution={pinned} isActiveComment={activeCommentId === pinned.id} {...itemProps} />
         </div>
       )}
       {rest.map(contribution => (
         <ContributionItem
           key={contribution.id}
           contribution={contribution}
+          isActiveComment={activeCommentId === contribution.id}
           {...itemProps}
         />
       ))}

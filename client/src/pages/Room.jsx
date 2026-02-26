@@ -10,7 +10,8 @@ import ContributorsPanel from '../components/ContributorsPanel';
 import WordleGame from '../components/WordleGame';
 import NotificationBell from '../components/NotificationBell';
 import RichEditor from '../components/RichEditor';
-import { USER_COLORS } from '../utils';
+import CommentSection from '../components/CommentSection';
+import { USER_COLORS, stripHTML } from '../utils';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
@@ -46,6 +47,7 @@ function Room() {
   const [membershipStatus, setMembershipStatus] = useState(null); // null | 'removed' | 'entry_locked'
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [otherCursors, setOtherCursors] = useState({}); // { userId: { pos, color, name } }
+  const [activeCommentId, setActiveCommentId] = useState(null); // ID of contribution whose comments are shown in sidebar
 
   const socketRef = useRef(null);
   const typingTimerRef = useRef({});
@@ -55,7 +57,11 @@ function Room() {
 
   // Socket.io setup
   useEffect(() => {
-    const socket = io({ transports: ['websocket', 'polling'] });
+    const socket = io({
+      transports: ['polling', 'websocket'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -487,37 +493,63 @@ function Room() {
     setShowExportMenu(false);
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     const title = room?.title || 'Untitled Story';
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
 
-    // Title
-    doc.setFontSize(22);
-    doc.text(title, 20, 20);
+    // Create a temporary hidden container to render HTML
+    const container = document.createElement('div');
+    container.style.width = '170mm';
+    container.style.padding = '0';
+    container.style.margin = '0';
+    container.style.fontSize = '12pt';
+    container.style.fontFamily = 'serif';
+    container.style.color = '#000';
+    container.style.lineHeight = '1.5';
+    container.style.whiteSpace = 'pre-wrap';
+    container.style.wordBreak = 'break-word';
 
-    // Content
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    let y = 40;
+    const h1 = document.createElement('h1');
+    h1.style.fontSize = '24pt';
+    h1.style.textAlign = 'center';
+    h1.style.marginBottom = '20pt';
+    h1.innerText = title;
+    container.appendChild(h1);
 
     const approved = contributions
       .filter(c => (c.status || 'approved') === 'approved')
       .sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) || new Date(a.created_at) - new Date(b.created_at));
 
     approved.forEach(c => {
-      const splitContent = doc.splitTextToSize(stripHTML(c.content), 170);
-      doc.text(splitContent, 20, y);
-      y += (splitContent.length * 7) + 8;
-
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
+      const section = document.createElement('div');
+      section.style.marginBottom = '12pt';
+      // Apply author color if requested
+      section.style.color = c.author_color || '#000';
+      section.innerHTML = c.content;
+      container.appendChild(section);
     });
 
-    const fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
-    doc.save(fileName);
-    setShowExportMenu(false);
+    document.body.appendChild(container);
+
+    try {
+      await doc.html(container, {
+        x: 20,
+        y: 20,
+        width: 170,
+        windowWidth: 800,
+        autoPaging: 'text',
+      });
+      doc.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+    } catch (err) {
+      console.error('PDF Export failed:', err);
+    } finally {
+      document.body.removeChild(container);
+      setShowExportMenu(false);
+    }
   };
 
   const handleExportDocx = () => {
@@ -537,9 +569,32 @@ function Room() {
     ];
 
     approved.forEach(c => {
+      // Basic HTML to docx conversion logic
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = c.content;
+
+      const runs = [];
+      const authorColor = (c.author_color || '#000000').replace('#', '');
+
+      // Simple recursive walker for basic tags
+      const traverse = (node) => {
+        if (node.nodeType === 3) { // Text node
+          runs.push(new TextRun({
+            text: node.textContent,
+            color: authorColor,
+            bold: node.parentElement.tagName === 'B' || node.parentElement.tagName === 'STRONG',
+            italics: node.parentElement.tagName === 'I' || node.parentElement.tagName === 'EM',
+          }));
+        } else {
+          node.childNodes.forEach(traverse);
+        }
+      };
+
+      traverse(tempDiv);
+
       children.push(
         new Paragraph({
-          children: [new TextRun({ text: stripHTML(c.content) })],
+          children: runs.length > 0 ? runs : [new TextRun({ text: stripHTML(c.content), color: authorColor })],
           spacing: { after: 200 },
         }),
       );
@@ -561,8 +616,10 @@ function Room() {
       .filter(c => (c.status || 'approved') === 'approved')
       .sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity) || new Date(a.created_at) - new Date(b.created_at));
 
-    // EPUB uses server-side generation (epub-gen-memory needs Node.js path/fs internals)
-    const bodyHtml = approved.map(c => `<p>${stripHTML(c.content)}</p>`).join('\n');
+    // EPUB uses server-side generation. Preserve HTML and add author colors.
+    const bodyHtml = approved.map(c =>
+      `<div style="color: ${c.author_color || '#000'}; margin-bottom: 1em;">${c.content}</div>`
+    ).join('\n');
     const chapters = [{ title, content: bodyHtml || '<p> </p>' }];
 
     try {
@@ -862,6 +919,16 @@ function Room() {
 
       {/* ── Body: contributions + chat sidebar ── */}
       <div className="room-body">
+        {view === 'collab' && (
+          <ChatSidebar
+            messages={Array.isArray(chatMessages) ? chatMessages : []}
+            currentUser={user}
+            onSend={handleSendChat}
+            isOpen={chatOpen}
+            onToggle={() => setChatOpen(o => !o)}
+          />
+        )}
+
         <main className="room-main">
           {view === 'collab' && (
             <ChatView
@@ -874,6 +941,8 @@ function Room() {
               onAddComment={handleAddComment}
               onLoadComments={handleLoadComments}
               onPin={handlePinContribution}
+              activeCommentId={activeCommentId}
+              onToggleComments={(id) => setActiveCommentId(prev => prev === id ? null : id)}
             />
           )}
           {view === 'review' && (
@@ -895,14 +964,28 @@ function Room() {
           <div ref={bottomRef} />
         </main>
 
-        {view === 'collab' && (
-          <ChatSidebar
-            messages={Array.isArray(chatMessages) ? chatMessages : []}
-            currentUser={user}
-            onSend={handleSendChat}
-            isOpen={chatOpen}
-            onToggle={() => setChatOpen(o => !o)}
-          />
+        {/* Comment Sidebar (Document-style) */}
+        {view === 'collab' && activeCommentId && (
+          <aside className="comment-sidebar">
+            <div className="comment-sidebar-header">
+              <h3>Comments</h3>
+              <button className="close-btn" onClick={() => setActiveCommentId(null)}>×</button>
+            </div>
+            <div className="comment-sidebar-body">
+              {(() => {
+                const contrib = contributions.find(c => c.id === activeCommentId);
+                if (!contrib) return null;
+                return (
+                  <CommentSection
+                    contributionId={contrib.id}
+                    comments={contrib.comments || []}
+                    currentUser={user}
+                    onAddComment={handleAddComment}
+                  />
+                );
+              })()}
+            </div>
+          </aside>
         )}
       </div>
 
@@ -930,6 +1013,7 @@ function Room() {
                 placeholder={`Write something, ${user?.name || 'Contributor'}…`}
                 otherCursors={otherCursors}
                 currentUserName={user?.name}
+                showCommentBubble={false}
                 onChange={(html, isEmpty) => {
                   setEditorHTML(html);
                   setEditorEmpty(isEmpty);
