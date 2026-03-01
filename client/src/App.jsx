@@ -22,20 +22,20 @@ function App() {
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
   useEffect(() => {
-    const stored = localStorage.getItem('collab_user');
-    if (stored) {
-      const parsed = JSON.parse(stored);
+    const storedUser = localStorage.getItem('collab_user');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
       fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: parsed.id, name: parsed.name, color: parsed.color })
+        body: JSON.stringify({ id: parsedUser.id, name: parsedUser.name, color: parsedUser.color })
       })
-        .then(r => r.json())
-        .then(u => {
-          setUser(u);
-          localStorage.setItem('collab_user', JSON.stringify(u));
+        .then(response => response.json())
+        .then(updatedUser => {
+          setUser(updatedUser);
+          localStorage.setItem('collab_user', JSON.stringify(updatedUser));
         })
-        .catch(() => setUser(parsed))
+        .catch(() => setUser(parsedUser))
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -43,15 +43,15 @@ function App() {
   }, []);
 
   const login = async (name, existingId, color) => {
-    const res = await fetch('/api/users', {
+    const response = await fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, id: existingId, color })
     });
-    const u = await res.json();
-    setUser(u);
-    localStorage.setItem('collab_user', JSON.stringify(u));
-    return u;
+    const loggedInUser = await response.json();
+    setUser(loggedInUser);
+    localStorage.setItem('collab_user', JSON.stringify(loggedInUser));
+    return loggedInUser;
   };
 
   const logout = () => {

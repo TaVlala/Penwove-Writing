@@ -1,24 +1,26 @@
-const AUTHOR_COLORS = [
+export const APP_COLORS = [
   '#6366f1', '#f59e0b', '#10b981', '#ef4444',
   '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6',
-  '#ec4899', '#84cc16'
+  '#ec4899', '#84cc16', '#eab308', '#22c55e',
+  '#a855f7'
 ];
 
-export const USER_COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#22c55e',
-  '#06b6d4', '#6366f1', '#a855f7', '#ec4899'
-];
-
+/**
+ * Returns a stable color from the palette for a given ID.
+ */
 export function getAuthorColor(authorId) {
-  if (!authorId) return AUTHOR_COLORS[0];
+  if (!authorId) return APP_COLORS[0];
   let hash = 0;
   for (let i = 0; i < authorId.length; i++) {
     hash = ((hash << 5) - hash) + authorId.charCodeAt(i);
     hash = hash & hash;
   }
-  return AUTHOR_COLORS[Math.abs(hash) % AUTHOR_COLORS.length];
+  return APP_COLORS[Math.abs(hash) % APP_COLORS.length];
 }
 
+/**
+ * Formats a timestamp into a human-readable relative time.
+ */
 export function formatTime(timestamp) {
   const date = new Date(timestamp);
   const now = new Date();
@@ -27,13 +29,18 @@ export function formatTime(timestamp) {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return date.toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   });
 }
+
+/**
+ * Safely strips HTML tags from a string.
+ */
 export function stripHTML(html) {
   if (!html) return '';
-  // Use DOMParser to safely extract text from HTML
   const doc = new DOMParser().parseFromString(html, 'text/html');
   return doc.body.textContent || "";
 }

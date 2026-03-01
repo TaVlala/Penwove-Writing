@@ -1,5 +1,5 @@
 /**
- * Simple JSON file-based database — no native compilation needed.
+ * Simple JSON file-based database.
  * All data is kept in memory and written to disk after every mutation.
  */
 const fs = require('fs');
@@ -8,9 +8,12 @@ const path = require('path');
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'db.json');
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
-const EMPTY = {
+const EMPTY_STORE = {
   users: [],
   rooms: [],
   contributions: [],
@@ -24,23 +27,33 @@ const EMPTY = {
 let store;
 
 try {
-  store = fs.existsSync(DATA_FILE)
-    ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'))
-    : { ...EMPTY };
-  // Make sure all collections exist (for schema migrations)
-  for (const key of Object.keys(EMPTY)) {
-    if (!store[key]) store[key] = [];
+  if (fs.existsSync(DATA_FILE)) {
+    store = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  } else {
+    store = { ...EMPTY_STORE };
   }
-} catch (e) {
-  console.warn('DB load failed, starting fresh:', e.message);
-  store = { ...EMPTY };
+  
+  // Migration: ensure all collections exist
+  for (const key of Object.keys(EMPTY_STORE)) {
+    if (!store[key]) {
+      store[key] = [];
+    }
+  }
+} catch (error) {
+  console.warn('Database load failed, starting fresh:', error.message);
+  store = { ...EMPTY_STORE };
 }
 
+/**
+ * Persists the current in-memory store to the JSON file.
+ */
 function save() {
-  // Atomic write: write to temp then rename
-  const tmp = DATA_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(store));
-  fs.renameSync(tmp, DATA_FILE);
+  const tmpFile = DATA_FILE + '.tmp';
+  fs.writeFileSync(tmpFile, JSON.stringify(store));
+  fs.renameSync(tmpFile, DATA_FILE);
 }
 
-module.exports = { store, save };
+module.exports = {
+  store,
+  save
+};

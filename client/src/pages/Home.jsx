@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../App';
-import { USER_COLORS } from '../utils';
+import { APP_COLORS } from '../utils';
 
 function ColorPicker({ selected, onChange }) {
   return (
     <div className="color-picker">
-      {USER_COLORS.map(c => (
+      {APP_COLORS.map(c => (
         <button
           key={c}
           type="button"
@@ -24,7 +24,7 @@ function Home() {
   const { user, login, logout, theme, toggleTheme } = useUser();
   const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(USER_COLORS[5]); // indigo default
+  const [selectedColor, setSelectedColor] = useState(APP_COLORS[5]); // indigo default
   const [title, setTitle] = useState('');
   const [joinId, setJoinId] = useState('');
   const [loading, setLoading] = useState(false);

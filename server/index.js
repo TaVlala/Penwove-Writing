@@ -33,10 +33,17 @@ app.use(express.json());
 
 // ============ HELPERS ============
 
-const now = () => Date.now();
-
 function createNotification(userId, roomId, type, message) {
-  const notif = { id: uuidv4(), user_id: userId, room_id: roomId, type, message, is_read: 0, created_at: now() };
+  if (!userId) return;
+  const notif = {
+    id: uuidv4(),
+    user_id: userId,
+    room_id: roomId,
+    type,
+    message,
+    is_read: 0,
+    created_at: Date.now()
+  };
   store.notifications.push(notif);
   save();
   io.to(`user_${userId}`).emit('notification', notif);
@@ -174,7 +181,7 @@ app.delete('/api/rooms/:id/members/:userId', (req, res) => {
   if (!member) return res.status(404).json({ error: 'Member not found' });
   if (member.removed_at) return res.status(400).json({ error: 'Already removed' });
 
-  member.removed_at = now();
+  member.removed_at = Date.now();
   member.removed_by = user_id;
   save();
 
@@ -225,7 +232,7 @@ app.post('/api/rooms/:id/contributions', (req, res) => {
     parent_id: parent_id || null,
     status: 'pending',
     sort_order: null,
-    created_at: now(),
+    created_at: Date.now(),
     reactions: []
   };
   store.contributions.push(contribution);
@@ -419,7 +426,7 @@ app.post('/api/contributions/:id/comments', (req, res) => {
     content: content.trim(),
     parent_id: parent_id || null,
     inline_id: inline_id || null,
-    created_at: now()
+    created_at: Date.now()
   };
   store.comments.push(comment);
   save();
@@ -458,7 +465,7 @@ app.post('/api/contributions/:id/reactions', (req, res) => {
   if (existingIdx !== -1) {
     store.reactions.splice(existingIdx, 1);
   } else {
-    store.reactions.push({ id: uuidv4(), contribution_id: req.params.id, user_id, emoji, created_at: now() });
+    store.reactions.push({ id: uuidv4(), contribution_id: req.params.id, user_id, emoji, created_at: Date.now() });
   }
   save();
 
@@ -493,7 +500,7 @@ app.post('/api/rooms/:id/chat', (req, res) => {
     author_name,
     author_color: author_color || '#6366f1',
     content: content.trim(),
-    created_at: now()
+    created_at: Date.now()
   };
   store.chat_messages.push(message);
   save();

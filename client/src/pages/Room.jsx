@@ -11,7 +11,7 @@ import WordleGame from '../components/WordleGame';
 import NotificationBell from '../components/NotificationBell';
 import RichEditor from '../components/RichEditor';
 import CommentSection from '../components/CommentSection';
-import { USER_COLORS, stripHTML } from '../utils';
+import { APP_COLORS, stripHTML } from '../utils';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
@@ -38,7 +38,7 @@ function Room() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef(null);
   const [nameInput, setNameInput] = useState('');
-  const [joinColor, setJoinColor] = useState(USER_COLORS[5]);
+  const [joinColor, setJoinColor] = useState(APP_COLORS[5]);
   const [linkCopied, setLinkCopied] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [members, setMembers] = useState([]);
@@ -73,7 +73,7 @@ function Room() {
           roomId,
           userId: u.id,
           userName: u.name,
-          userColor: u.color || USER_COLORS[5],
+          userColor: u.color || APP_COLORS[5],
         });
       }
     });
@@ -198,7 +198,7 @@ function Room() {
         roomId,
         userId: user.id,
         userName: user.name,
-        userColor: user.color || USER_COLORS[5],
+        userColor: user.color || APP_COLORS[5],
       });
     }
   }, [user]);
@@ -469,11 +469,6 @@ function Room() {
     });
   };
 
-  const stripHTML = (html) => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
-  };
 
   const handleExportTxt = () => {
     const title = room?.title || 'Untitled Story';
@@ -691,7 +686,7 @@ function Room() {
             <div className="color-picker-row">
               <span className="color-picker-label">Pick your color</span>
               <div className="color-picker">
-                {USER_COLORS.map(c => (
+                {APP_COLORS.map(c => (
                   <button
                     key={c}
                     type="button"
