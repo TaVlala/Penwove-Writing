@@ -5,16 +5,18 @@ import { useUser } from '../App';
 import ChatView from '../components/ChatView';
 import DocumentView from '../components/DocumentView';
 import ReviewView from '../components/ReviewView';
-import ChatSidebar from '../components/ChatSidebar';
-import ContributorsPanel from '../components/ContributorsPanel';
-import WordleGame from '../components/WordleGame';
 import NotificationBell from '../components/NotificationBell';
 import RichEditor from '../components/RichEditor';
 import CommentSection from '../components/CommentSection';
+import RoomHeader from '../components/RoomHeader';
+import JoinRoomForm from '../components/JoinRoomForm';
+import SidebarComponent from '../components/SidebarComponent';
+
+// Lazy load heavy/non-critical components
+const ChatSidebar = React.lazy(() => import('../components/ChatSidebar'));
+const ContributorsPanel = React.lazy(() => import('../components/ContributorsPanel'));
+const WordleGame = React.lazy(() => import('../components/WordleGame'));
 import { APP_COLORS, stripHTML } from '../utils';
-import { jsPDF } from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
-import { saveAs } from 'file-saver';
 
 function Room() {
   const { id: roomId } = useParams();
@@ -488,7 +490,8 @@ function Room() {
     setShowExportMenu(false);
   };
 
-  const handleExportPdf = async () => {
+  const exportAsPDF = async () => {
+    const { jsPDF } = await import('jspdf');
     const title = room?.title || 'Untitled Story';
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -547,7 +550,10 @@ function Room() {
     }
   };
 
-  const handleExportDocx = () => {
+  const exportAsWord = async () => {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
+    const { saveAs } = await import('file-saver');
+
     const title = room?.title || 'Untitled Story';
 
     const approved = contributions
@@ -650,59 +656,16 @@ function Room() {
 
   // Name prompt for unauthenticated users visiting a room link
   if (!user) {
-    // If room is entry-locked, block new visitors entirely
-    if (room?.is_entry_locked) {
-      return (
-        <div className="overlay">
-          <div className="prompt-card">
-            <div className="prompt-icon">🔒</div>
-            <h2>Room is closed</h2>
-            <p>This room is no longer accepting new contributors.</p>
-            <button className="btn btn-secondary" onClick={() => navigate('/')}>Go Home</button>
-          </div>
-        </div>
-      );
-    }
     return (
-      <div className="overlay">
-        <div className="prompt-card">
-          <div className="prompt-icon">✍️</div>
-          <h2>Enter your name to join</h2>
-          <p>You'll be able to read and contribute to this room.</p>
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            if (!nameInput.trim()) return;
-            await login(nameInput.trim(), undefined, joinColor);
-          }}>
-            <input
-              className="input"
-              type="text"
-              placeholder="Your name"
-              value={nameInput}
-              onChange={e => setNameInput(e.target.value)}
-              maxLength={50}
-              autoFocus
-            />
-            <div className="color-picker-row">
-              <span className="color-picker-label">Pick your color</span>
-              <div className="color-picker">
-                {APP_COLORS.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`color-swatch${joinColor === c ? ' color-swatch--active' : ''}`}
-                    style={{ background: c }}
-                    onClick={() => setJoinColor(c)}
-                  />
-                ))}
-              </div>
-            </div>
-            <button className="btn btn-primary" type="submit" disabled={!nameInput.trim()}>
-              Join Room →
-            </button>
-          </form>
-        </div>
-      </div>
+      <JoinRoomForm
+        room={room}
+        nameInput={nameInput}
+        setNameInput={setNameInput}
+        joinColor={joinColor}
+        setJoinColor={setJoinColor}
+        onLogin={login}
+        navigate={navigate}
+      />
     );
   }
 
@@ -755,173 +718,49 @@ function Room() {
 
   return (
     <div className="room-layout">
-      {/* ── Header ── */}
-      <header className="room-header">
-        <div className="room-header-left">
-          <button className="theme-toggle" style={{ position: 'static', marginRight: 12 }} onClick={() => navigate('/')} title="Home">
-            ←
-          </button>
-          <div className="room-title-wrap">
-            <img src="/assets/logo.svg" alt="Logo" className="room-logo-img" />
-            <h1 className="room-title">{room?.title || 'Untitled Room'}</h1>
-            {!!room?.is_entry_locked && <span className="badge badge-locked">🚪 Closed</span>}
-            {!!room?.is_locked && <span className="badge badge-locked">✏️ Locked</span>}
-          </div>
-        </div>
-
-        <div className="room-header-center">
-          <div className="view-toggle">
-            <button
-              className={`toggle-btn ${view === 'collab' ? 'active' : ''}`}
-              onClick={() => setView('collab')}
-              title="Collaboration Feed"
-            >
-              <span className="btn-long">Collab</span>
-              <span className="btn-short">C</span>
-            </button>
-            <button
-              className={`toggle-btn ${view === 'review' ? 'active' : ''}`}
-              onClick={() => setView('review')}
-              title="Review & Approve"
-            >
-              <span className="btn-long">Review</span>
-              <span className="btn-short">R</span>
-            </button>
-            <button
-              className={`toggle-btn ${view === 'document' ? 'active' : ''}`}
-              onClick={() => setView('document')}
-              title="Final Document"
-            >
-              <span className="btn-long">Document</span>
-              <span className="btn-short">D</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="room-header-right">
-          <div className="btn-group">
-            <button className="btn btn-secondary btn-icon-only" onClick={handleCopyLink} title="Copy Share Link">
-              🔗
-            </button>
-            <div className="export-menu-wrap" ref={exportMenuRef}>
-              <button
-                className={`btn btn-secondary btn-icon-only ${showExportMenu ? 'active' : ''}`}
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                title="Export Document"
-              >
-                ↓
-              </button>
-              {showExportMenu && (
-                <div className="export-dropdown">
-                  <button onClick={handleExportTxt} className="export-item">
-                    <span className="export-icon">📄</span>
-                    <div className="export-info">
-                      <span className="export-label">Plain Text</span>
-                      <span className="export-ext">.txt</span>
-                    </div>
-                  </button>
-                  <button onClick={handleExportPdf} className="export-item">
-                    <span className="export-icon">📕</span>
-                    <div className="export-info">
-                      <span className="export-label">PDF Document</span>
-                      <span className="export-ext">.pdf</span>
-                    </div>
-                  </button>
-                  <button onClick={handleExportDocx} className="export-item">
-                    <span className="export-icon">📘</span>
-                    <div className="export-info">
-                      <span className="export-label">Word Document</span>
-                      <span className="export-ext">.docx</span>
-                    </div>
-                  </button>
-                  <button onClick={handleExportEpub} className="export-item">
-                    <span className="export-icon">📙</span>
-                    <div className="export-info">
-                      <span className="export-label">EPUB Book</span>
-                      <span className="export-ext">.epub</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Online presence avatars */}
-          {Array.isArray(onlineUsers) && onlineUsers.length > 0 && (
-            <div className="presence-avatars">
-              {onlineUsers.slice(0, 5).map(u => (
-                <span
-                  key={u.userId}
-                  className={`presence-avatar${u.userId === user?.id ? ' presence-avatar--self' : ''}`}
-                  style={{ background: u.userColor }}
-                  title={u.userId === user?.id ? `${u.userName || 'Unknown'} (you)` : u.userName || 'Unknown'}
-                >
-                  {(u.userName || '?').charAt(0).toUpperCase()}
-                </span>
-              ))}
-              {onlineUsers.length > 5 && (
-                <span className="presence-overflow" title={`${onlineUsers.length - 5} more online`}>
-                  +{onlineUsers.length - 5}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Contributors & Viewers Group */}
-          <div className="btn-group">
-            <button
-              className="btn btn-secondary contributors-btn"
-              onClick={() => setShowContributors(true)}
-              title="View contributors"
-            >
-              👥 {members.filter(m => !m.removed_at).length}
-            </button>
-            <button
-              className={`btn-icon${showWordle ? ' active' : ''}`}
-              onClick={() => setShowWordle(v => !v)}
-              title="Play Wordle"
-            >
-              🎮
-            </button>
-          </div>
-
-          {isCreator && (
-            <div className="view-toggle">
-              <button
-                className={`toggle-btn ${room?.is_entry_locked ? 'active' : ''}`}
-                onClick={handleEntryLockToggle}
-                title={room?.is_entry_locked ? 'Room closed — click to open' : 'Room open — click to lock'}
-              >
-                {room?.is_entry_locked ? '🔒 Closed' : '🔓 Room'}
-              </button>
-              <button
-                className={`toggle-btn ${room?.is_locked ? 'active' : ''}`}
-                onClick={handleContribLockToggle}
-                title={room?.is_locked ? 'Posts locked — click to unlock' : 'Posts open — click to lock'}
-              >
-                {room?.is_locked ? '🔒 Locked' : '🔓 Posts'}
-              </button>
-            </div>
-          )}
-          <button className="btn-icon" onClick={toggleTheme} title="Toggle theme">
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
-          <NotificationBell
-            notifications={notifications}
-            onMarkAllRead={markAllNotificationsRead}
-          />
-        </div>
-      </header>
+      <RoomHeader
+        room={room}
+        user={user}
+        navigate={navigate}
+        view={view}
+        setView={setView}
+        handleCopyLink={handleCopyLink}
+        showExportMenu={showExportMenu}
+        setShowExportMenu={setShowExportMenu}
+        handleExportTxt={handleExportTxt}
+        handleExportPdf={exportAsPDF}
+        handleExportDocx={exportAsWord}
+        handleExportEpub={handleExportEpub}
+        exportMenuRef={exportMenuRef}
+        onlineUsers={onlineUsers}
+        members={members}
+        showWordle={showWordle}
+        setShowWordle={setShowWordle}
+        setShowContributors={setShowContributors}
+        handleEntryLockToggle={handleEntryLockToggle}
+        handleContribLockToggle={handleContribLockToggle}
+        toggleTheme={toggleTheme}
+        theme={theme}
+        notifications={notifications}
+        markAllNotificationsRead={markAllNotificationsRead}
+      />
 
       {/* ── Body: contributions + chat sidebar ── */}
       <div className="room-body">
         {view === 'collab' && (
-          <ChatSidebar
-            messages={Array.isArray(chatMessages) ? chatMessages : []}
-            currentUser={user}
-            onSend={handleSendChat}
-            isOpen={chatOpen}
-            onToggle={() => setChatOpen(o => !o)}
-          />
+          <React.Suspense fallback={<div className="sidebar-loading-placeholder" />}>
+            <ChatSidebar
+              isOpen={chatOpen}
+              onToggle={() => setChatOpen(!chatOpen)}
+              roomId={roomId}
+              socket={socketRef.current}
+              currentUser={user}
+              messages={chatMessages}
+              setMessages={setChatMessages}
+              activeCommentId={activeCommentId}
+              setActiveCommentId={setActiveCommentId}
+            />
+          </React.Suspense>
         )}
 
         <main className="room-main">
@@ -960,27 +799,14 @@ function Room() {
         </main>
 
         {/* Comment Sidebar (Document-style) */}
-        {view === 'collab' && activeCommentId && (
-          <aside className="comment-sidebar">
-            <div className="comment-sidebar-header">
-              <h3>Comments</h3>
-              <button className="close-btn" onClick={() => setActiveCommentId(null)}>×</button>
-            </div>
-            <div className="comment-sidebar-body">
-              {(() => {
-                const contrib = contributions.find(c => c.id === activeCommentId);
-                if (!contrib) return null;
-                return (
-                  <CommentSection
-                    contributionId={contrib.id}
-                    comments={contrib.comments || []}
-                    currentUser={user}
-                    onAddComment={handleAddComment}
-                  />
-                );
-              })()}
-            </div>
-          </aside>
+        {view === 'collab' && (
+          <SidebarComponent
+            activeCommentId={activeCommentId}
+            setActiveCommentId={setActiveCommentId}
+            contributions={contributions}
+            user={user}
+            onAddComment={handleAddComment}
+          />
         )}
       </div>
 
@@ -1035,17 +861,24 @@ function Room() {
 
       {/* Contributors panel */}
       {showContributors && (
-        <ContributorsPanel
-          members={members}
-          isCreator={isCreator}
-          currentUser={user}
-          onRemove={handleRemoveMember}
-          onClose={() => setShowContributors(false)}
-        />
+        <React.Suspense fallback={null}>
+          <ContributorsPanel
+            isOpen={showContributors}
+            onClose={() => setShowContributors(false)}
+            members={members}
+            currentUser={user}
+            isCreator={room?.creator_id === user?.id}
+            roomId={roomId}
+          />
+        </React.Suspense>
       )}
 
       {/* Wordle game panel */}
-      {showWordle && <WordleGame onClose={() => setShowWordle(false)} />}
+      {showWordle && (
+        <React.Suspense fallback={<div className="modal-loading-overlay"><div className="spinner" /></div>}>
+          <WordleGame onClose={() => setShowWordle(false)} />
+        </React.Suspense>
+      )}
 
       {/* Confirm dialog */}
       {confirmDialog && (

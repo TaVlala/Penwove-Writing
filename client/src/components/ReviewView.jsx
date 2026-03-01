@@ -187,4 +187,4 @@ function ReviewView({ contributions, currentUser, isCreator, onApprove, onReject
   );
 }
 
-export default ReviewView;
+export default React.memo(ReviewView);

@@ -40,4 +40,4 @@ function ChatView({ contributions, currentUser, isCreator, onDelete, onEdit, onR
   );
 }
 
-export default ChatView;
+export default React.memo(ChatView);

@@ -42,37 +42,36 @@
   --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --blur: blur(12px);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --blur: blur(16px);
 
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font: 'Outfit', 'Inter', -apple-system, sans-serif;
 }
 
 [data-theme="dark"] {
-  --bg: #020617;
-  /* Deepest Navy/Black */
-  --surface: rgba(15, 23, 42, 0.8);
-  --surface-raised: #1e293b;
-  --border: rgba(30, 41, 59, 1);
+  --bg: #030712;
+  --surface: rgba(17, 24, 39, 0.75);
+  --surface-raised: #111827;
+  --border: rgba(31, 41, 55, 0.8);
   --border-focus: #2dd4bf;
 
   --primary: #2dd4bf;
   --primary-hover: #5eead4;
-  --primary-gradient: linear-gradient(135deg, #2dd4bf 0%, #0891b2 100%);
+  --primary-gradient: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
 
-  --primary-light: rgba(45, 212, 191, 0.08);
-  --secondary-bg: #0f172a;
-  --secondary-hover: #1e293b;
+  --primary-light: rgba(45, 212, 191, 0.05);
+  --secondary-bg: #111827;
+  --secondary-hover: #1f2937;
 
-  --text: #f8fafc;
-  --text-muted: #94a3b8;
+  --text: #f3f4f6;
+  --text-muted: #9ca3af;
 
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.7);
 
-  --glass-bg: rgba(15, 23, 42, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(17, 24, 39, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="dark"] .notif-item--unread {
@@ -811,14 +810,14 @@ body {
 
 .action-card {
   flex: 1;
-  background: var(--surface);
+  background: var(--glass-bg);
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  padding: 32px;
-  box-shadow: var(--shadow-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 40px 32px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   text-align: left;

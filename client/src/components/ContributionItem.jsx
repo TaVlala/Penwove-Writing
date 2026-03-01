@@ -232,4 +232,4 @@ function ContributionItem({ contribution, currentUser, isCreator, onDelete, onEd
   );
 }
 
-export default ContributionItem;
+export default React.memo(ContributionItem);

@@ -41,4 +41,4 @@ function DocumentView({ contributions, roomTitle }) {
   );
 }
 
-export default DocumentView;
+export default React.memo(DocumentView);
