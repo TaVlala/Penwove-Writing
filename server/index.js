@@ -67,7 +67,7 @@ app.post('/api/users', (req, res) => {
     }
   }
 
-  const user = { id: id || uuidv4(), name: trimmedName, color: color || '#6366f1', created_at: now() };
+  const user = { id: id || uuidv4(), name: trimmedName, color: color || '#6366f1', created_at: Date.now() };
   store.users.push(user);
   save();
   res.json(user);
@@ -84,7 +84,7 @@ app.post('/api/rooms', (req, res) => {
     title: title?.trim() || null,
     creator_id,
     is_locked: 0,
-    created_at: now()
+    created_at: Date.now()
   };
   store.rooms.push(room);
   save();
@@ -133,7 +133,7 @@ app.post('/api/rooms/:id/join', (req, res) => {
   if (existing) {
     existing.user_name = user_name;
     if (user_color) existing.user_color = user_color;
-    existing.last_seen = now();
+    existing.last_seen = Date.now();
     save();
     return res.json(existing);
   }
@@ -144,8 +144,8 @@ app.post('/api/rooms/:id/join', (req, res) => {
     user_id,
     user_name,
     user_color: user_color || '#6366f1',
-    joined_at: now(),
-    last_seen: now(),
+    joined_at: Date.now(),
+    last_seen: Date.now(),
     removed_at: null,
     removed_by: null
   };
@@ -276,7 +276,7 @@ app.patch('/api/contributions/:id', (req, res) => {
   const wasApproved = contribution.status === 'approved';
 
   contribution.content = content.trim();
-  contribution.edited_at = now();
+  contribution.edited_at = Date.now();
   if (wasApproved) {
     contribution.status = 'pending';
     contribution.sort_order = null;

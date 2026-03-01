@@ -1,8 +1,14 @@
 export const APP_COLORS = [
-  '#6366f1', '#f59e0b', '#10b981', '#ef4444',
-  '#8b5cf6', '#06b6d4', '#f97316', '#14b8a6',
-  '#ec4899', '#84cc16', '#eab308', '#22c55e',
-  '#a855f7'
+  '#6366f1', // Indigo
+  '#f59e0b', // Amber
+  '#10b981', // Emerald
+  '#ef4444', // Red
+  '#8b5cf6', // Violet
+  '#06b6d4', // Cyan
+  '#f97316', // Orange
+  '#ec4899', // Pink
+  '#84cc16', // Lime
+  '#14b8a6'  // Teal
 ];
 
 /**
