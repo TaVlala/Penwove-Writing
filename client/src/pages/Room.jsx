@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useUser } from '../App';
+import { APP_COLORS, stripHTML } from '../utils';
 import ChatView from '../components/ChatView';
 import DocumentView from '../components/DocumentView';
 import ReviewView from '../components/ReviewView';
@@ -16,7 +17,6 @@ import SidebarComponent from '../components/SidebarComponent';
 const ChatSidebar = React.lazy(() => import('../components/ChatSidebar'));
 const ContributorsPanel = React.lazy(() => import('../components/ContributorsPanel'));
 const WordleGame = React.lazy(() => import('../components/WordleGame'));
-import { APP_COLORS, stripHTML } from '../utils';
 
 function Room() {
   const { id: roomId } = useParams();
