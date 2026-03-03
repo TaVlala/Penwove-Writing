@@ -9,6 +9,7 @@ import Highlight from '@tiptap/extension-highlight';
 import FontFamily from '@tiptap/extension-font-family';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import Underline from '@tiptap/extension-underline';
 import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
 import { Comment } from '../extensions/Comment';
 import { Extension } from '@tiptap/core';
@@ -142,6 +143,7 @@ const RichEditor = forwardRef(function RichEditor(
           class: 'rich-image',
         },
       }),
+      Underline,
       Highlight.configure({ multicolor: true }),
       Comment,
       CursorExtension,
@@ -365,6 +367,13 @@ const RichEditor = forwardRef(function RichEditor(
             title="Italic (Ctrl+I)"
           ><i>I</i></button>
 
+          <button
+            type="button"
+            className={`toolbar-btn${editor.isActive('underline') ? ' toolbar-btn--active' : ''}`}
+            onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
+            title="Underline (Ctrl+U)"
+          ><u>U</u></button>
+
           <div className="toolbar-divider" />
 
           <button
@@ -523,33 +532,7 @@ const RichEditor = forwardRef(function RichEditor(
 
           <div className="toolbar-divider" />
 
-          <button
-            type="button"
-            className={`toolbar-btn${editor.isActive('highlight') ? ' toolbar-btn--active' : ''}`}
-            onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleHighlight().run(); }}
-            title="Highlight"
-          >🖍️</button>
-
-          <button
-            type="button"
-            className={`toolbar-btn${editor.isActive('comment') ? ' toolbar-btn--active' : ''}`}
-            onMouseDown={e => {
-              e.preventDefault();
-              if (editor.isActive('comment')) {
-                editor.chain().focus().unsetComment().run();
-              } else {
-                const text = editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to);
-                if (!text.trim()) return;
-                const commentId = `comment-${Date.now()}`;
-                editor.chain().focus().setComment(commentId, currentUserName).run();
-              }
-            }}
-            title="Inline Comment"
-          >💬+</button>
-
-          <div className="toolbar-divider" />
-
-          {/* Relocated Thesaurus Button */}
+          {/* Thesaurus Button */}
           <button
             type="button"
             className="toolbar-btn"
