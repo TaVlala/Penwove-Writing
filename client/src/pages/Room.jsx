@@ -200,8 +200,14 @@ function Room() {
       setIncomingChallenge(challenge);
     });
 
-    socket.on('game:challenge:accepted', ({ game, seed, opponentName, opponentId }) => {
-      setGameSession({ game, seed, opponentName, opponentId });
+    socket.on('game:challenge:accepted', ({ game, seed, opponentName, opponentId, customWord }) => {
+      setGameSession(prev => {
+        // If already set up as setter for this game, just confirm opponent info (don't overwrite role/customWord)
+        if (prev && prev.game === game && prev.role === 'setter') {
+          return { ...prev, opponentName, opponentId };
+        }
+        return { game, seed, opponentName, opponentId, role: game === 'hangman' ? 'setter' : 'player', customWord };
+      });
       setOpponentResult(null);
       if (game === 'wordle')     setShowWordle(true);
       if (game === 'hangman')    setShowHangman(true);
@@ -701,14 +707,19 @@ function Room() {
   // ── Game challenge handlers ───────────────────────────────────────────
   const GAME_LABELS = { wordle: 'Wordle', hangman: 'Hangman', wordladder: 'Word Ladder' };
 
-  const handleSendChallenge = (toUserId, toUserName, game) => {
+  const handleSendChallenge = (toUserId, toUserName, game, customWord = null) => {
     const seed = Math.floor(Math.random() * 100000);
     const challengeId = `${user?.id || 'anon'}_${Date.now()}`;
     socketRef.current?.emit('game:challenge', {
       toUserId, game, seed, challengeId,
       fromUser: { id: user?.id, name: user?.name },
+      customWord,
     });
-    setGameSession({ game, seed, opponentId: toUserId, opponentName: toUserName });
+    setGameSession({
+      game, seed, opponentId: toUserId, opponentName: toUserName,
+      role: game === 'hangman' ? 'setter' : 'player',
+      customWord,
+    });
     setOpponentResult(null);
   };
 
@@ -726,6 +737,8 @@ function Room() {
       seed: incomingChallenge.seed,
       opponentName: incomingChallenge.fromUser.name,
       opponentId: incomingChallenge.fromUser.id,
+      role: incomingChallenge.game === 'hangman' ? 'guesser' : 'player',
+      customWord: incomingChallenge.customWord || null,
     });
     setOpponentResult(null);
     const g = incomingChallenge.game;
@@ -1014,7 +1027,7 @@ function Room() {
             onClose={() => { setShowHangman(false); clearGameSession(); }}
             members={members}
             currentUser={user}
-            onSendChallenge={(toId, toName) => handleSendChallenge(toId, toName, 'hangman')}
+            onSendChallenge={(toId, toName, customWord) => handleSendChallenge(toId, toName, 'hangman', customWord)}
             vsSession={gameSession?.game === 'hangman' ? gameSession : null}
             opponentResult={gameSession?.game === 'hangman' ? opponentResult : null}
             onVsResult={handleVsResult}

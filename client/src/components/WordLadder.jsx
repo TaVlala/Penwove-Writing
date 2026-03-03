@@ -201,12 +201,12 @@ function WordLadder({ onClose, members = [], currentUser, onSendChallenge, vsSes
                     <p className="challenge-picker-label">Challenge to Word Ladder:</p>
                     {eligibleMembers.map(m => (
                       <button key={m.user_id} className="challenge-picker-item" onClick={() => {
-                        onSendChallenge?.(m.user_id, m.name);
+                        onSendChallenge?.(m.user_id, m.user_name);
                         setChallengeSent(true);
                         setShowPicker(false);
                       }}>
-                        <span className="challenge-avatar">{(m.name || '?').charAt(0).toUpperCase()}</span>
-                        {m.name}
+                        <span className="challenge-avatar" style={{ background: m.user_color }}>{(m.user_name || '?').charAt(0).toUpperCase()}</span>
+                        {m.user_name}
                       </button>
                     ))}
                   </div>

@@ -593,8 +593,8 @@ io.on('connection', (socket) => {
   });
 
   // ── Game challenge events ──────────────────────────────────────────────
-  socket.on('game:challenge', ({ toUserId, game, seed, fromUser, challengeId }) => {
-    const challenge = { challengeId, game, seed, fromUser };
+  socket.on('game:challenge', ({ toUserId, game, seed, fromUser, challengeId, customWord }) => {
+    const challenge = { challengeId, game, seed, fromUser, customWord };
     activeGameChallenges[challengeId] = challenge;
     const isOnline = Object.values(presence).some(p => p.userId === toUserId);
     if (isOnline) {
@@ -614,6 +614,7 @@ io.on('connection', (socket) => {
         seed: challenge?.seed,
         opponentName: respondingUser.name,
         opponentId: respondingUser.id,
+        customWord: challenge?.customWord,
       });
     } else {
       io.to(`user_${fromUserId}`).emit('game:challenge:declined', {

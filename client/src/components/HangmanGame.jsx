@@ -53,7 +53,14 @@ const KEY_ROWS = [
 const MAX_WRONG = 8;
 
 function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSession, opponentResult, onVsResult }) {
-  const initWord = () => vsSession ? getWordFromSeed(vsSession.seed) : getRandomWord();
+  const isSetter = vsSession?.role === 'setter';
+  const isGuesser = vsSession?.role === 'guesser';
+
+  const initWord = () => {
+    if (!vsSession) return getRandomWord();
+    if (isGuesser) return vsSession.customWord || getWordFromSeed(vsSession.seed);
+    return getRandomWord(); // setter doesn't play
+  };
 
   const [word, setWord] = useState(initWord);
   const [guessed, setGuessed] = useState(new Set());
@@ -64,36 +71,54 @@ function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSe
   // Challenge picker state
   const [showPicker, setShowPicker] = useState(false);
   const [challengeSent, setChallengeSent] = useState(false);
+  const [pickerStep, setPickerStep] = useState('opponent'); // 'opponent' | 'word'
+  const [pickedOpponent, setPickedOpponent] = useState(null);
+  const [customWordInput, setCustomWordInput] = useState('');
+  const [wordError, setWordError] = useState('');
   const pickerRef = useRef(null);
+  const wordInputRef = useRef(null);
 
   const wrongGuesses = [...guessed].filter(l => !word.includes(l));
 
-  // Reset when vsSession seed changes
+  // Reset when vsSession changes (new challenge accepted as guesser)
   useEffect(() => {
-    if (vsSession) {
-      setWord(getWordFromSeed(vsSession.seed));
+    if (vsSession?.role === 'guesser') {
+      setWord(vsSession.customWord || getWordFromSeed(vsSession.seed));
       setGuessed(new Set());
       setGameOver(false); setWon(false);
       setResultReported(false);
     }
-  }, [vsSession?.seed]); // eslint-disable-line
+  }, [vsSession?.seed, vsSession?.customWord, vsSession?.role]); // eslint-disable-line
+
+  // Focus word input when entering word step
+  useEffect(() => {
+    if (pickerStep === 'word' && wordInputRef.current) {
+      wordInputRef.current.focus();
+    }
+  }, [pickerStep]);
 
   // Click outside to close picker
   useEffect(() => {
     const handler = (e) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false);
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setShowPicker(false);
+        setPickerStep('opponent');
+        setPickedOpponent(null);
+        setCustomWordInput('');
+        setWordError('');
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Report VS result once when game ends
+  // Report VS result once when guesser finishes
   useEffect(() => {
-    if (gameOver && vsSession && !resultReported) {
+    if (gameOver && isGuesser && !resultReported) {
       setResultReported(true);
       onVsResult?.({ outcome: won ? 'won' : 'lost', score: null });
     }
-  }, [gameOver, vsSession, won, resultReported, onVsResult]);
+  }, [gameOver, isGuesser, won, resultReported, onVsResult]);
 
   const guess = useCallback((letter) => {
     if (gameOver || guessed.has(letter)) return;
@@ -105,13 +130,14 @@ function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSe
   }, [gameOver, guessed, word]);
 
   useEffect(() => {
+    if (isSetter) return; // setter doesn't type
     const handler = (e) => {
       const k = e.key.toUpperCase();
       if (/^[A-Z]$/.test(k)) guess(k);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [guess]);
+  }, [guess, isSetter]);
 
   const playAgain = () => {
     if (vsSession) return;
@@ -119,6 +145,20 @@ function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSe
     setGuessed(new Set());
     setGameOver(false); setWon(false);
     setResultReported(false);
+  };
+
+  const sendChallenge = () => {
+    const w = customWordInput.trim().toUpperCase();
+    if (!w) { setWordError('Enter a word'); return; }
+    if (!/^[A-Z]+$/.test(w)) { setWordError('Letters only'); return; }
+    if (w.length < 3) { setWordError('At least 3 letters'); return; }
+    onSendChallenge?.(pickedOpponent.user_id, pickedOpponent.user_name, w);
+    setChallengeSent(true);
+    setShowPicker(false);
+    setPickerStep('opponent');
+    setPickedOpponent(null);
+    setCustomWordInput('');
+    setWordError('');
   };
 
   const eligibleMembers = members.filter(m => m.user_id !== currentUser?.id && !m.removed_at);
@@ -130,7 +170,9 @@ function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSe
           <div className="wordle-title">
             <span>🎭</span>
             <h2>Hangman</h2>
-            <span className="wordle-badge">{vsSession ? `vs ${vsSession.opponentName}` : 'Writers Edition'}</span>
+            <span className="wordle-badge">
+              {isSetter ? `⚔️ You set the word` : vsSession ? `vs ${vsSession.opponentName}` : 'Writers Edition'}
+            </span>
           </div>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             {!vsSession && eligibleMembers.length > 0 && (
@@ -147,17 +189,43 @@ function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSe
                 }
                 {showPicker && (
                   <div className="challenge-picker">
-                    <p className="challenge-picker-label">Challenge to Hangman:</p>
-                    {eligibleMembers.map(m => (
-                      <button key={m.user_id} className="challenge-picker-item" onClick={() => {
-                        onSendChallenge?.(m.user_id, m.name);
-                        setChallengeSent(true);
-                        setShowPicker(false);
-                      }}>
-                        <span className="challenge-avatar">{(m.name || '?').charAt(0).toUpperCase()}</span>
-                        {m.name}
-                      </button>
-                    ))}
+                    {pickerStep === 'opponent' && (
+                      <>
+                        <p className="challenge-picker-label">Challenge to Hangman:</p>
+                        {eligibleMembers.map(m => (
+                          <button key={m.user_id} className="challenge-picker-item" onClick={() => {
+                            setPickedOpponent(m);
+                            setPickerStep('word');
+                          }}>
+                            <span className="challenge-avatar" style={{ background: m.user_color }}>{(m.user_name || '?').charAt(0).toUpperCase()}</span>
+                            {m.user_name}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {pickerStep === 'word' && (
+                      <>
+                        <p className="challenge-picker-label">
+                          Word for <strong>{pickedOpponent?.user_name}</strong> to guess:
+                        </p>
+                        <input
+                          ref={wordInputRef}
+                          className="challenge-word-input"
+                          value={customWordInput}
+                          onChange={e => { setCustomWordInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase()); setWordError(''); }}
+                          onKeyDown={e => { if (e.key === 'Enter') sendChallenge(); if (e.key === 'Escape') setPickerStep('opponent'); }}
+                          placeholder="Type a word…"
+                          maxLength={16}
+                          spellCheck={false}
+                          autoComplete="off"
+                        />
+                        {wordError && <p className="challenge-word-error">{wordError}</p>}
+                        <div className="challenge-word-actions">
+                          <button className="btn btn-secondary challenge-word-btn" onClick={() => { setPickerStep('opponent'); setCustomWordInput(''); setWordError(''); }}>← Back</button>
+                          <button className="btn btn-primary challenge-word-btn" onClick={sendChallenge}>Send ⚔️</button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -167,71 +235,98 @@ function HangmanGame({ onClose, members = [], currentUser, onSendChallenge, vsSe
         </div>
 
         <div className="wordle-body">
-          {/* VS status bar */}
-          {vsSession && (
-            <div className="vs-status-bar">
-              <span>⚔️ vs <strong>{vsSession.opponentName}</strong></span>
-              {opponentResult
-                ? <span className={`vs-result vs-result--${opponentResult.outcome}`}>
-                    {opponentResult.outcome === 'won' ? 'Won ✓' : 'Lost ✗'}
-                  </span>
-                : <span className="vs-playing">Playing…</span>
-              }
+          {/* Setter waiting view */}
+          {isSetter ? (
+            <div className="hangman-setter-wait">
+              <div className="vs-status-bar">
+                <span>⚔️ vs <strong>{vsSession.opponentName}</strong></span>
+                {opponentResult
+                  ? <span className={`vs-result vs-result--${opponentResult.outcome}`}>
+                      {opponentResult.outcome === 'won' ? 'Guessed it ✓' : 'Gave up ✗'}
+                    </span>
+                  : <span className="vs-playing">Guessing…</span>
+                }
+              </div>
+              <p className="hangman-setter-info">You set this word for them to guess:</p>
+              <div className="hangman-setter-word">
+                {(vsSession.customWord || '').split('').map((l, i) => (
+                  <span key={i} className="hangman-letter hangman-letter--revealed">{l}</span>
+                ))}
+              </div>
+              {!opponentResult && (
+                <p className="wordle-hint">Waiting for {vsSession.opponentName} to finish…</p>
+              )}
             </div>
-          )}
-
-          <HangmanSVG wrong={wrongGuesses.length} />
-          <p className="hangman-counter">
-            {wrongGuesses.length}/{MAX_WRONG} wrong
-            {wrongGuesses.length > 0 && (
-              <span className="hangman-wrong-letters"> · {wrongGuesses.join(' ')}</span>
-            )}
-          </p>
-
-          <div className="hangman-word">
-            {word.split('').map((letter, i) => (
-              <span
-                key={i}
-                className={`hangman-letter${guessed.has(letter) ? ' hangman-letter--revealed' : ''}${gameOver && !won && !guessed.has(letter) ? ' hangman-letter--missed' : ''}`}
-              >
-                {guessed.has(letter) || gameOver ? letter : '_'}
-              </span>
-            ))}
-          </div>
-
-          {gameOver && (
-            <div className={`wordle-result ${won ? 'wordle-result--won' : 'wordle-result--lost'}`}>
-              <span>{won ? 'You got it! 🎉' : 'Better luck next time'}</span>
-              {!vsSession && <button className="wordle-play-again" onClick={playAgain}>Play Again</button>}
-            </div>
-          )}
-
-          {!gameOver && (
-            <div className="hangman-keyboard">
-              {KEY_ROWS.map((row, r) => (
-                <div key={r} className="hangman-key-row">
-                  {row.map(letter => {
-                    const isWrong   = guessed.has(letter) && !word.includes(letter);
-                    const isCorrect = guessed.has(letter) &&  word.includes(letter);
-                    return (
-                      <button
-                        key={letter}
-                        className={`hangman-key${isWrong ? ' hangman-key--wrong' : isCorrect ? ' hangman-key--correct' : ''}`}
-                        onClick={() => guess(letter)}
-                        disabled={guessed.has(letter)}
-                      >
-                        {letter}
-                      </button>
-                    );
-                  })}
+          ) : (
+            /* Normal game (solo) or guesser in VS mode */
+            <>
+              {/* VS status bar for guesser */}
+              {isGuesser && (
+                <div className="vs-status-bar">
+                  <span>⚔️ vs <strong>{vsSession.opponentName}</strong></span>
+                  {opponentResult
+                    ? <span className={`vs-result vs-result--${opponentResult.outcome}`}>
+                        {opponentResult.outcome === 'won' ? 'Won ✓' : 'Lost ✗'}
+                      </span>
+                    : <span className="vs-playing">Playing…</span>
+                  }
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          <p className="wordle-hint">
-            {vsSession ? 'Same word — first to solve wins ⚔️' : 'Literary themed words · type or click letters'}
-          </p>
+              <HangmanSVG wrong={wrongGuesses.length} />
+              <p className="hangman-counter">
+                {wrongGuesses.length}/{MAX_WRONG} wrong
+                {wrongGuesses.length > 0 && (
+                  <span className="hangman-wrong-letters"> · {wrongGuesses.join(' ')}</span>
+                )}
+              </p>
+
+              <div className="hangman-word">
+                {word.split('').map((letter, i) => (
+                  <span
+                    key={i}
+                    className={`hangman-letter${guessed.has(letter) ? ' hangman-letter--revealed' : ''}${gameOver && !won && !guessed.has(letter) ? ' hangman-letter--missed' : ''}`}
+                  >
+                    {guessed.has(letter) || gameOver ? letter : '_'}
+                  </span>
+                ))}
+              </div>
+
+              {gameOver && (
+                <div className={`wordle-result ${won ? 'wordle-result--won' : 'wordle-result--lost'}`}>
+                  <span>{won ? 'You got it! 🎉' : 'Better luck next time'}</span>
+                  {!vsSession && <button className="wordle-play-again" onClick={playAgain}>Play Again</button>}
+                </div>
+              )}
+
+              {!gameOver && (
+                <div className="hangman-keyboard">
+                  {KEY_ROWS.map((row, r) => (
+                    <div key={r} className="hangman-key-row">
+                      {row.map(letter => {
+                        const isWrong   = guessed.has(letter) && !word.includes(letter);
+                        const isCorrect = guessed.has(letter) &&  word.includes(letter);
+                        return (
+                          <button
+                            key={letter}
+                            className={`hangman-key${isWrong ? ' hangman-key--wrong' : isCorrect ? ' hangman-key--correct' : ''}`}
+                            onClick={() => guess(letter)}
+                            disabled={guessed.has(letter)}
+                          >
+                            {letter}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="wordle-hint">
+                {isGuesser ? 'Your opponent chose this word — guess it! ⚔️' : 'Literary themed words · type or click letters'}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
