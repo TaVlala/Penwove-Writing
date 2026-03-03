@@ -9,6 +9,7 @@ function RoomHeader({
   view,
   setView,
   handleCopyLink,
+  linkCopied,
   showExportMenu,
   setShowExportMenu,
   handleExportTxt,
@@ -99,8 +100,12 @@ function RoomHeader({
 
       <div className="room-header-right">
         <div className="btn-group">
-          <button className="btn btn-secondary btn-icon-only" onClick={handleCopyLink} title="Copy Share Link">
-            🔗
+          <button
+            className={`btn btn-secondary btn-icon-only${linkCopied ? ' btn--copied' : ''}`}
+            onClick={handleCopyLink}
+            title={linkCopied ? 'Link copied!' : 'Copy Share Link'}
+          >
+            {linkCopied ? '✓' : '🔗'}
           </button>
           <ExportMenu
             show={showExportMenu}

@@ -672,9 +672,25 @@ function Room() {
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    const url = window.location.href;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).catch(() => fallbackCopy(url));
+    } else {
+      fallbackCopy(url);
+    }
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const fallbackCopy = (text) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
   };
 
   // ── Game challenge handlers ───────────────────────────────────────────
@@ -818,6 +834,7 @@ function Room() {
         view={view}
         setView={setView}
         handleCopyLink={handleCopyLink}
+        linkCopied={linkCopied}
         showExportMenu={showExportMenu}
         setShowExportMenu={setShowExportMenu}
         handleExportTxt={handleExportTxt}

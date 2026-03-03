@@ -510,6 +510,12 @@ body {
   font-size: 18px;
 }
 
+.btn--copied {
+  color: #538d4e !important;
+  border-color: #538d4e !important;
+  font-weight: 700;
+}
+
 .btn-link {
   background: none;
   border: none;
