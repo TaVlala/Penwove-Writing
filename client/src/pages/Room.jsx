@@ -624,6 +624,7 @@ function Room() {
     const chapters = [{ title, content: bodyHtml || '<p> </p>' }];
 
     try {
+      const { saveAs } = await import('file-saver');
       const res = await fetch(`/api/rooms/${roomId}/export/epub`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
