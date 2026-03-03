@@ -662,11 +662,16 @@ function Room() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, chapters }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(errBody || `Server error ${res.status}`);
+      }
       const blob = await res.blob();
       saveAs(blob, `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.epub`);
     } catch (err) {
       console.error('EPUB Export failed:', err);
+      setPostError('EPUB export failed — please try again.');
+      setTimeout(() => setPostError(''), 4000);
     }
     setShowExportMenu(false);
   };

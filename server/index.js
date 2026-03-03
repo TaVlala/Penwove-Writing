@@ -29,7 +29,8 @@ io.on('connection', (socket) => {
 });
 
 app.use(cors({ origin: CORS_ORIGINS }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ============ HELPERS ============
 
@@ -626,16 +627,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ============ STATIC (production) ============
-
-if (isProd) {
-  const clientDist = path.join(__dirname, '../client/dist');
-  app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
-}
-
 // ============ EPUB EXPORT ============
 
 app.post('/api/rooms/:id/export/epub', async (req, res) => {
@@ -653,9 +644,19 @@ app.post('/api/rooms/:id/export/epub', async (req, res) => {
     res.send(Buffer.from(buffer));
   } catch (err) {
     console.error('EPUB generation failed:', err);
-    res.status(500).json({ error: 'EPUB generation failed' });
+    res.status(500).json({ error: 'EPUB generation failed', detail: err.message });
   }
 });
+
+// ============ STATIC (production) ============
+
+if (isProd) {
+  const clientDist = path.join(__dirname, '../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // ============ START ============
 
