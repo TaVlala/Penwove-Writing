@@ -537,6 +537,7 @@ const RichEditor = forwardRef(function RichEditor(
             type="button"
             className="toolbar-btn"
             onMouseDown={handleThesaurusClick}
+            onClick={e => e.stopPropagation()}
             title="Thesaurus"
           >
             📖
