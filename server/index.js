@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { store, save } = require('./db');
 
@@ -562,16 +563,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ============ STATIC (production) ============
-
-if (isProd) {
-  const clientDist = path.join(__dirname, '../client/dist');
-  app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
-}
-
 // ============ EPUB EXPORT ============
 
 app.post('/api/rooms/:id/export/epub', async (req, res) => {
@@ -592,6 +583,16 @@ app.post('/api/rooms/:id/export/epub', async (req, res) => {
     res.status(500).json({ error: 'EPUB generation failed' });
   }
 });
+
+// ============ STATIC (production) ============
+// Serve client build whenever dist exists — avoids relying on env var detection
+const clientDist = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // ============ START ============
 
