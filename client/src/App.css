@@ -546,10 +546,12 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
   color: var(--text-muted);
   padding: 6px 8px;
   border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   transition: background .15s, color .15s;
 }
@@ -1283,21 +1285,21 @@ body {
 }
 
 .toggle-btn {
-  padding: 0 20px;
+  padding: 0 16px;
   border: none;
   background: transparent;
   cursor: pointer;
   font-size: 15px;
-  /* Larger text */
   font-weight: 700;
   color: var(--text-muted);
   transition: all 0.2s ease;
   font-family: var(--font);
   letter-spacing: -0.01em;
   border-radius: 10px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   min-width: 48px;
 }
 
@@ -2661,6 +2663,9 @@ body {
   font-size: 13px;
   padding: 6px 11px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* ===================== CONTRIBUTORS PANEL ===================== */
