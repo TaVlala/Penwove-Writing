@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
+import Start from './pages/Start';
 import Room from './pages/Room';
 
 export const UserContext = createContext(null);
@@ -72,6 +73,7 @@ function App() {
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/start" element={<Start />} />
           <Route path="/room/:id" element={<Room />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
