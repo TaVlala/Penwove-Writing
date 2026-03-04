@@ -636,6 +636,17 @@ app.post('/api/rooms/:id/export/epub', async (req, res) => {
     return res.status(400).json({ error: 'title and chapters required' });
   }
   try {
+    // epub-gen-memory requires the File global (Node 20+); polyfill for older runtimes
+    if (typeof globalThis.File === 'undefined') {
+      const { Blob } = require('buffer');
+      globalThis.File = class File extends Blob {
+        constructor(chunks, name, opts = {}) {
+          super(chunks, opts);
+          this.name = name;
+          this.lastModified = opts.lastModified || Date.now();
+        }
+      };
+    }
     const epubGen = require('epub-gen-memory');
     const fn = epubGen.default || epubGen;
     const buffer = await fn({ title, author: 'Penwove Contributors', publisher: 'Penwove' }, chapters);
