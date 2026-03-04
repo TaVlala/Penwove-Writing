@@ -3788,6 +3788,8 @@ body {
 /* ===================== GAME MENU DROPDOWN ===================== */
 .game-menu-wrap {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .game-menu-dropdown {
